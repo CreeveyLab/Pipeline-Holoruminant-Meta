@@ -1,14 +1,19 @@
 # Paths and parameters relative to references
 ---
 hosts:  # Add more in case of multi-host, remove entries in case of environmental sample
+  # Real, working lab host set (validated live on Kelvin2 this session, both via
+  # dry-run and a real sandbox submission): cilliates (protozoa) + the 3 real
+  # vertebrate hosts. Spelling of "cilliates" (double-l) is a pre-existing typo
+  # that matches the real reference filename on disk (Cilliates_20240528.fa.gz)
+  # -- keep it as-is, don't "fix" the spelling, or the host name stops matching
+  # the actual file. ryegrass/wheat/maize (dietary contamination filters, not
+  # currently used by this lab) dropped per the same decision already made for
+  # the live holor_pipeline_project; add back if a herd's diet makes them relevant.
+  cilliates: resources/reference/Cilliates_20240528.fa.gz
   bovine: resources/reference/Bos_taurus.ARS-UCD1.3.dna.toplevel.fa.gz
   human: resources/reference/Homo_sapiens.GRCh38.dna.toplevel.fa.gz
-  #ciliates: resources/reference/Ciliates_20240528.fa.gz
-  ryegrass: resources/reference/Lolium_perenne.MPB_Lper_Kyuss_1697.dna.toplevel.fa.gz
   sheep: resources/reference/Ovis_aries.Oar_v3.1.dna_rm.toplevel.fa.gz
-  wheat: resources/reference/Triticum_aestivum.IWGSC.dna_rm.toplevel.fa.gz
-  maize: resources/reference/Zea_mays.Zm-B73-REFERENCE-NAM-5.0.dna.toplevel.fa.gz
-  
+
 magscot:
   pfam_hmm: resources/MAGScoT/hmm/gtdbtk_rel207_Pfam-A.hmm.gz
   tigr_hmm: resources/MAGScoT/hmm/gtdbtk_rel207_tigrfam.hmm.gz
