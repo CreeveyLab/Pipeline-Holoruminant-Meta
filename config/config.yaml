@@ -39,64 +39,97 @@ resource_sets:
     runtime: 300
     mem_mb: 16000
     cpus: 1
-    partition: "small"
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
 
   medium:
     runtime: 4000
     mem_mb: 160000
     cpus: 10
-    partition: "small"
+    partition: "k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
 
   medium_nvme:
     runtime: 4000
     mem_mb: 160000
     cpus: 10
-    partition: "small"
-    nvme: "nvme:10"    
-    
+    partition: "k2-lowpri,k2-bioinf"
+    nvme: "nvme:10"
+
   large:
     runtime: 4000
     mem_mb: 320000
     cpus: 20
-    partition: "small"
+    partition: "k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
 
   large_nvme:
     runtime: 4000
     mem_mb: 320000
     cpus: 20
-    partition: "small"
+    partition: "k2-lowpri,k2-bioinf"
     nvme: "nvme:50"
 
   highmem:
     runtime: 4000
     mem_mb: 1400000
     cpus: 20
-    partition: "hugemem"
+    partition: "k2-himem,k2-lowpri,k2-bioinf"
     nvme: "nvme:250"
 
   longrun:
     runtime: 20000
     mem_mb: 320000
     cpus: 20
-    partition: "longrun"
+    partition: "k2-lowpri,k2-bioinf"
     nvme: "nvme:250"
 
   highmem_longrun:
-    runtime: 20000
+    # Confirmed directly (2026-09-14) via `sinfo -p k2-himem` and a real
+    # `sbatch --test-only`: k2-himem's real MaxTime is 3-00:00:00 (4320min),
+    # not the generic 20000min this tier inherited from Migale/Puhti, and no
+    # other Kelvin partition has anywhere near 1.4TB/node (k2-lowpri tops out
+    # at 772992MB, k2-bioinf at 1030144MB) to fall back to for this much
+    # memory. 20000min/k2-himem together is unsatisfiable on this cluster --
+    # confirmed the hard way: SLURM rejects the whole submission ("Requested
+    # time limit is invalid"), the same multi-partition --time behaviour
+    # documented in config/profiles/Kelvin/config.yaml. Capped to k2-himem's
+    # actual ceiling; no rule currently uses this tier (grep config/
+    # escalation.yaml) so nothing was silently broken, but don't raise this
+    # runtime again without re-confirming k2-himem's cap.
+    runtime: 4320
     mem_mb: 1400000
     cpus: 20
-    partition: "hugemem_longrun"
+    partition: "k2-himem"
     nvme: "nvme:250"
 
   full_node:
     runtime: 4000
     mem_mb: 360000
     cpus: 40
-    partition: "small"
+    partition: "k2-lowpri,k2-bioinf"
     nvme: "nvme:1000"
+
+  # --- Kelvin2-specific, real-data-calibrated tiers (holor-pipeline-fork) ---
+  # Added for the preprocess bowtie2/fastp cascade: real benchmark data (sample
+  # 37131, benchmark: TSVs) shows these rules complete in 15-76min at <=38GB,
+  # nowhere near the "medium" tier's 4000min/160GB they previously inherited --
+  # that mismatch was the original queueing problem (excluded from k2-medpri's
+  # 24h cap, forced onto contended k2-lowpri/k2-bioinf for no real reason).
+  # Sized with generous headroom over the observed max, not an exact fit.
+  kelvin_preprocess_std:      # fastp__run, bowtie2__build
+    runtime: 180         # 3h vs. real max 76min (fastp)
+    mem_mb: 16000         # 16GB vs. real max 12.0GB (bowtie2 build)
+    cpus: 4
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
+  kelvin_preprocess_map:      # bowtie2__map (heaviest preprocess stage)
+    runtime: 180          # 3h vs. real max 44min
+    mem_mb: 49000          # ~48GB vs. real max 38.1GB
+    cpus: 8
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
     
  # The previous node is used for setting up a ramdisc for time-critical tasks. Make sure, that the allocation ensures that the entire node is
  # requested for the job so that there won't be other users on the same node while the job runs. Their jobs might get affected by the

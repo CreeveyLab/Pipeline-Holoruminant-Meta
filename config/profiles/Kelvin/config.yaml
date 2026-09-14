@@ -1,0 +1,51 @@
+# Kelvin2 SLURM profile for holor-pipeline-fork.
+#
+# Built on Snakemake's native `slurm` executor (matches config/profiles/Puhti/
+# config.yaml's shape), NOT the old hand-rolled cluster-generic profile at
+# /mnt/scratch2/users/3053301/holor_pipeline_project/config/profiles/Kelvin/ --
+# that profile predates this fork's escalation.yaml/esc() resource system and
+# uses resource key names (time, mem_per_cpu, cpu_per_task) that don't match
+# how every rule in workflow/rules/ actually assigns resources (runtime,
+# mem_mb, cpus_per_task, slurm_partition, gres -- see helpers/__functions__.smk
+# esc()). The native slurm executor needs no custom submit-cmd template.
+#
+# Real, validated Kelvin2 partition facts (carried over from the old profile,
+# not its mechanics):
+#   - k2-medpri:  1440min (24h) cap.
+#   - k2-lowpri, k2-bioinf: uncapped, but contended by the whole cluster --
+#     every long-running job on Kelvin that doesn't fit k2-medpri piles up here.
+#   - k2-sandbox: ~30min cap, usually idle. For genuinely trivial rules only
+#     (e.g. reads__link_run -- already tiered this way in escalation.yaml,
+#     untouched by this profile).
+#   - k2-himem: memory-gated. Its real runtime cap has NOT been directly
+#     confirmed against this fork -- validate with `sbatch --test-only` before
+#     trusting the highmem/highmem_longrun resource_sets tiers for real use.
+#
+# Confirmed the hard way once already: SLURM's multi-partition --time
+# validation rejects the WHOLE submission if --time exceeds ANY listed
+# partition's cap, not just excludes that partition. Never list k2-medpri
+# alongside a resource_sets tier whose runtime exceeds 1440min. Same rule
+# caught a real bug here on 2026-09-14: resource_sets.highmem_longrun
+# originally listed k2-himem (real MaxTime 3-00:00:00 = 4320min, confirmed
+# via `sinfo -p k2-himem`) at runtime=20000 -- rejected outright by
+# `sbatch --test-only` ("Requested time limit is invalid"). Fixed in
+# config/config.yaml; re-run that validation before trusting any new
+# highmem/highmem_longrun-routed rule.
+#
+# Dependency note: this profile's `executor: slurm` requires the
+# snakemake-executor-plugin-slurm package. As of 2026-09-14 it is NOT
+# installed in the centrally-available snakemake/9.9.0 module or in
+# /mnt/scratch2/igfs-anaconda/conda-envs/snakemake_8.20.1 (the env the old,
+# cluster-generic-based Kelvin install actually used -- which is almost
+# certainly why that profile used cluster-generic in the first place).
+# Install into your own account before running for real:
+#   pip install --user snakemake-executor-plugin-slurm
+executor: slurm
+jobs: 150
+default-resources:
+    runtime: 30
+    mem_mb: 16000
+    cpus_per_task: 1
+    slurm_partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    slurm_account: "default"
+    gres: "'nvme:0'"

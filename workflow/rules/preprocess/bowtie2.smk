@@ -17,7 +17,7 @@ rule preprocess__bowtie2__build:
         runtime=esc("runtime", "preprocess__bowtie2__build"),
         mem_mb=esc("mem_mb", "preprocess__bowtie2__build"),
         cpus_per_task=esc("cpus", "preprocess__bowtie2__build"),
-        partition=esc("partition", "preprocess__bowtie2__build"),
+        slurm_partition=esc("partition", "preprocess__bowtie2__build"),
         gres=lambda wc, attempt: f"{get_resources(wc, attempt, 'preprocess__bowtie2__build')['nvme']}",
         attempt=get_attempt,
     retries: len(get_escalation_order("preprocess__bowtie2__build"))
@@ -59,7 +59,7 @@ rule preprocess__bowtie2__map:
         runtime=esc("runtime", "preprocess__bowtie2__map"),
         mem_mb=esc("mem_mb", "preprocess__bowtie2__map"),
         cpus_per_task=esc("cpus", "preprocess__bowtie2__map"),
-        partition=esc("partition", "preprocess__bowtie2__map"),
+        slurm_partition=esc("partition", "preprocess__bowtie2__map"),
         gres=lambda wc, attempt: f"{get_resources(wc, attempt, 'preprocess__bowtie2__map')['nvme']}",
         attempt=get_attempt,
     retries: len(get_escalation_order("preprocess__bowtie2__map"))
@@ -102,7 +102,7 @@ rule preprocess__bowtie2__extract_nonhost_run:
         runtime=esc("runtime", "preprocess__bowtie2__extract_nonhost_run"),
         mem_mb=esc("mem_mb", "preprocess__bowtie2__extract_nonhost_run"),
         cpus_per_task=esc("cpus", "preprocess__bowtie2__extract_nonhost_run"),
-        partition=esc("partition", "preprocess__bowtie2__extract_nonhost_run"),
+        slurm_partition=esc("partition", "preprocess__bowtie2__extract_nonhost_run"),
         gres=lambda wc, attempt: f"{get_resources(wc, attempt, 'preprocess__bowtie2__extract_nonhost_run')['nvme']}",
         attempt=get_attempt,
     retries: len(get_escalation_order("preprocess__bowtie2__extract_nonhost_run"))
@@ -139,7 +139,7 @@ rule preprocess__store_final_fastq:
         runtime=esc("runtime", "preprocess__store_final_fastq"),
         mem_mb=esc("mem_mb", "preprocess__store_final_fastq"),
         cpus_per_task=esc("cpus", "preprocess__store_final_fastq"),
-        partition=esc("partition", "preprocess__store_final_fastq"),
+        slurm_partition=esc("partition", "preprocess__store_final_fastq"),
         gres=lambda wc, attempt: f"{get_resources(wc, attempt, 'preprocess__store_final_fastq')['nvme']}",
         attempt=get_attempt,
     retries: len(get_escalation_order("preprocess__store_final_fastq"))
