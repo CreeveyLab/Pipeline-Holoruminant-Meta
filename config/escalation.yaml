@@ -57,7 +57,7 @@ helpers__samtools__index_cram: small
 preprocess__bowtie2__build: kelvin_preprocess_std
 preprocess__bowtie2__extract_nonhost: medium
 preprocess__bowtie2__extract_nonhost_run: small
-preprocess__bowtie2__map: kelvin_preprocess_std,kelvin_preprocess_map
+preprocess__bowtie2__map: kelvin_preprocess_map,large
 preprocess__fastp__run: kelvin_preprocess_std
 preprocess__samtools__stats_cram: small
 preprocess__store_final_fastq: small
