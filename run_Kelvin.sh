@@ -60,6 +60,14 @@ echo "Pipeline folder   : ${pipelineFolder}"
 mkdir -p slurm_out
 mkdir -p "$projectFolder/tmp"
 
+# Pre-flight safety gate (CLAUDE.md Section 4 incidents #2/#6): refuses to
+# launch if a previous generation's SLURM jobs or orchestrator process are
+# still alive for this project -- see workflow/scripts/kelvin_launch_guard.sh
+# for what it actually checks and why "kill" alone isn't a safe signal.
+if ! "$pipelineFolder/workflow/scripts/kelvin_launch_guard.sh" "$projectFolder"; then
+    exit 1
+fi
+
 # Bind-mount list (see header comment). Points at the central reference/
 # database store (Section 6 step 1) -- migrated 2026-09-15 via rsync copy
 # (not mv/rename, per explicit instruction: no write access to
