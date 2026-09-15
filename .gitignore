@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# Local working/scoping notes -- not for the public repo (personal paths,
+# internal cluster details, references to unrelated private projects).
+CLAUDE.md
