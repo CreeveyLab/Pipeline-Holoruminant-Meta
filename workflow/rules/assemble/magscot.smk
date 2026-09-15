@@ -8,6 +8,7 @@ rule assemble__magscot__prodigal:
         ),
     output:
         proteins=MAGSCOT / "{assembly_id}" / "prodigal.faa",
+    group: "magscot_{assembly_id}"
     log:
         MAGSCOT / "{assembly_id}" / "prodigal.log",
     container:
@@ -53,6 +54,7 @@ rule assemble__magscot__hmmsearch_pfam:
         hmm=features["magscot"]["pfam_hmm"],
     output:
         tblout=MAGSCOT / "{assembly_id}" / "pfam.tblout.gz",
+    group: "magscot_{assembly_id}"
     log:
         MAGSCOT / "{assembly_id}" / "pfam.log",
     container:
@@ -93,6 +95,7 @@ rule assemble__magscot__hmmsearch_tigr:
         hmm=features["magscot"]["tigr_hmm"],
     output:
         tblout=MAGSCOT / "{assembly_id}" / "tigr.tblout.gz",
+    group: "magscot_{assembly_id}"
     log:
         MAGSCOT / "{assembly_id}" / "tigr.log",
     container:
@@ -135,6 +138,7 @@ rule assemble__magscot__join_hmms:
         pfam_tblout=MAGSCOT / "{assembly_id}" / "pfam.tblout.gz",
     output:
         merged=MAGSCOT / "{assembly_id}" / "hmm.tblout",
+    group: "magscot_{assembly_id}"
     log:
         MAGSCOT / "{assembly_id}" / "hmm.log",
     container:
@@ -176,6 +180,7 @@ rule assemble__magscot__merge_contig_to_bin:
         metabat2=METABAT2 / "{assembly_id}",
     output:
         MAGSCOT / "{assembly_id}" / "contigs_to_bin.tsv",
+    group: "magscot_{assembly_id}"
     log:
         MAGSCOT / "{assembly_id}" / "contigs_to_bin.log",
     container:
@@ -225,6 +230,7 @@ rule assemble__magscot__run:
         refined_contig_to_bin=MAGSCOT / "{assembly_id}" / "magscot.refined.contig_to_bin.out",
         refined_out=MAGSCOT / "{assembly_id}" / "magscot.refined.out",
         scores=MAGSCOT / "{assembly_id}" / "magscot.scores.out",
+    group: "magscot_{assembly_id}"
     log:
         MAGSCOT / "{assembly_id}/magscot.log",
     container:
@@ -269,6 +275,7 @@ rule assemble__magscot__reformat:
         refined_contig_to_bin=MAGSCOT / "{assembly_id}" / "magscot.refined.contig_to_bin.out",
     output:
         clean=MAGSCOT / "{assembly_id}" / "magscot.reformat.tsv",
+    group: "magscot_{assembly_id}"
     log:
         MAGSCOT / "{assembly_id}" / "magscot.reformat.log",
     container:
@@ -311,6 +318,7 @@ rule assemble__magscot__rename:
         clean=MAGSCOT / "{assembly_id}" / "magscot.reformat.tsv",
     output:
         fasta=MAGSCOT / "{assembly_id}.fa.gz",
+    group: "magscot_{assembly_id}"
     log:
         MAGSCOT / "{assembly_id}" / "magscot.rename.log",
     container:

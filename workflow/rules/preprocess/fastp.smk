@@ -11,6 +11,7 @@ rule preprocess__fastp__run:
         unpaired2=FASTP / "{sample_id}.{library_id}_u2.fq.gz",
         html=FASTP / "{sample_id}.{library_id}_fastp.html",
         json=FASTP / "{sample_id}.{library_id}_fastp.json",
+    group: "preprocess_{sample_id}_{library_id}"
     log:
         FASTP / "{sample_id}.{library_id}.log",
     benchmark:

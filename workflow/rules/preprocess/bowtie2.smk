@@ -44,6 +44,7 @@ rule preprocess__bowtie2__map:
     output:
         cram=temp(PRE_BOWTIE2 / "{genome}" / "{sample_id}.{library_id}.cram"),
         counts=PRE_QUANT / "{genome}" / "{sample_id}.{library_id}.chr_alignment_counts.tsv"
+    group: "preprocess_{sample_id}_{library_id}"
     log:
         PRE_BOWTIE2 / "{genome}" / "{sample_id}.{library_id}.log",
     benchmark:
@@ -92,6 +93,7 @@ rule preprocess__bowtie2__extract_nonhost_run:
     output:
         forward_=temp(PRE_BOWTIE2 / "non{genome}" / "{sample_id}.{library_id}_1.fq.gz"),
         reverse_=temp(PRE_BOWTIE2 / "non{genome}" / "{sample_id}.{library_id}_2.fq.gz"),
+    group: "preprocess_{sample_id}_{library_id}"
     log:
         PRE_BOWTIE2 / "non{genome}" / "{sample_id}.{library_id}.log",
     benchmark:
@@ -132,6 +134,7 @@ rule preprocess__store_final_fastq:
     output:
         forward_=PRE_BOWTIE2 / "decontaminated_reads" / "{sample_id}.{library_id}_1.fq.gz",
         reverse_=PRE_BOWTIE2 / "decontaminated_reads" / "{sample_id}.{library_id}_2.fq.gz",
+    group: "preprocess_{sample_id}_{library_id}"
     log:
         PRE_BOWTIE2 / "decontaminated_reads" / "log" / "{sample_id}.{library_id}.log",
     benchmark:
