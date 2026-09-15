@@ -18,12 +18,17 @@ rule assemble__drep__separate_bins:
     retries: len(get_escalation_order("assemble__drep__separate_bins"))
     params:
         folder=config["pipeline_folder"],
+        tmp_dir=lambda w: Path(str(DREP / "separated_bins") + "_tmp"),
     shell:
         """
         echo "=== Running assemble__drep__separate_bins ===" > {log} 2>&1
 
-        {params.folder}/workflow/scripts/split_bins.sh {output.out_dir} {input.assemblies} >> {log} 2>&1
-        
+        rm --recursive --force {params.tmp_dir} 2>> {log} 1>&2
+
+        {params.folder}/workflow/scripts/split_bins.sh {params.tmp_dir} {input.assemblies} >> {log} 2>&1
+
+        mv {params.tmp_dir} {output.out_dir}
+
         echo "=== Finished assemble__drep__separate_bins ===" >> {log} 2>&1
         """
 

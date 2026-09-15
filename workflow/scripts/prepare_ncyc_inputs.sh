@@ -18,8 +18,14 @@ INPUT_DIR="$1"
 OUTFILE="$2"
 FILETYPE="$3"
 
-# Overwrite output file
-> "$OUTFILE"
+# Write to a temp path first, only move into place once fully written --
+# otherwise a kill mid-loop leaves a truncated file sitting at the real
+# output path, which downstream tooling (and Snakemake's own rerun
+# tracking) would silently trust as complete.
+TMPFILE="${OUTFILE}.tmp"
+
+# Overwrite temp output file
+> "$TMPFILE"
 
 # Decide read counting method
 if [[ "$FILETYPE" == "fq.gz" || "$FILETYPE" == "fastq.gz" ]]; then
@@ -53,7 +59,9 @@ for file in "$INPUT_DIR"/*."$FILETYPE"; do
         reads=$(grep -c "^>" "$file")
     fi
 
-    echo -e "$sample\t$reads" >> "$OUTFILE"
+    echo -e "$sample\t$reads" >> "$TMPFILE"
 done
+
+mv "$TMPFILE" "$OUTFILE"
 
 echo "Done. Output written to $OUTFILE"

@@ -87,9 +87,18 @@ export_a <- t(merged_counts_a)
 
 export_a <- data.frame(Feature = row.names(export_a), export_a)
 
-write.table(export_a, file=file.path(project_folder, result_folder, "summary_a.tsv"), sep="\t", quote=FALSE, row.names=FALSE)
+# Write to temp paths first, only rename into place once fully written --
+# otherwise a kill mid-write leaves a truncated file at the exact path
+# Snakemake's own rerun tracking treats as complete.
+summary_a_path <- file.path(project_folder, result_folder, "summary_a.tsv")
+summary_b_path <- file.path(project_folder, result_folder, "summary_b.tsv")
+
+write.table(export_a, file=paste0(summary_a_path, ".tmp"), sep="\t", quote=FALSE, row.names=FALSE)
 # We do not need the b output, but to fulfill the output requirements from snakeamke we writean identical file out
-write.table(export_a, file=file.path(project_folder, result_folder, "summary_b.tsv"), sep="\t", quote=FALSE, row.names=FALSE)
+write.table(export_a, file=paste0(summary_b_path, ".tmp"), sep="\t", quote=FALSE, row.names=FALSE)
+
+file.rename(paste0(summary_a_path, ".tmp"), summary_a_path)
+file.rename(paste0(summary_b_path, ".tmp"), summary_b_path)
 
 # 
 # # Now merge the pathway names into orthologs

@@ -121,6 +121,12 @@ mkdir -p "$OUTDIR"
 ############################################
 DIAMOND_OUT="${OUTDIR}/${SAMPLE}.diamond.tsv"
 EGGNOG_OUT="${OUTDIR}/${SAMPLE}.eggnog.tsv.gz"
+# Write to temp paths, move into place only after each step fully succeeds --
+# otherwise a kill mid-run (diamond is a real, non-trivial tool invocation)
+# leaves a truncated file at the exact path callers (and Snakemake's own
+# rerun tracking) treat as complete.
+DIAMOND_OUT_TMP="${DIAMOND_OUT}.tmp"
+EGGNOG_OUT_TMP="${EGGNOG_OUT}.tmp"
 
 ############################################
 # Summary
@@ -143,11 +149,13 @@ echo "[1/2] Running Diamond blastp..."
 diamond blastp \
     -d "$DIAMOND_DB" \
     -q "$QUERY_FASTA" \
-    -o "$DIAMOND_OUT" \
+    -o "$DIAMOND_OUT_TMP" \
     --outfmt 6 \
     --max-target-seqs 1 \
     --evalue "$EVALUE" \
     -p "$THREADS"
+
+mv "$DIAMOND_OUT_TMP" "$DIAMOND_OUT"
 
 ############################################
 # Step 2: Merge with EggNOG master table
@@ -167,7 +175,9 @@ NR==FNR {
         print $1, $2, $3, $4, $11, $12, "NA"
     }
 }
-' <(zcat "$MASTER_TABLE") "$DIAMOND_OUT" | gzip > "$EGGNOG_OUT"
+' <(zcat "$MASTER_TABLE") "$DIAMOND_OUT" | gzip > "$EGGNOG_OUT_TMP"
+
+mv "$EGGNOG_OUT_TMP" "$EGGNOG_OUT"
 
 ############################################
 # Cleanup
