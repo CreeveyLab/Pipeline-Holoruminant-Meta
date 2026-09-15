@@ -85,15 +85,15 @@ rule mag_annotate__dram_mag__distill:
         DRAMMAG / "{assembly_id}" / "distill.log2",
     container:
         docker["dram"]
-    threads: esc("cpus", "mag_annotate__fix_dram_mag_annotations_scaffold")
+    threads: esc("cpus", "mag_annotate__dram_mag__distill")
     resources:
-        runtime=esc("runtime", "mag_annotate__fix_dram_mag_annotations_scaffold"),
-        mem_mb=esc("mem_mb", "mag_annotate__fix_dram_mag_annotations_scaffold"),
-        cpus_per_task=esc("cpus", "mag_annotate__fix_dram_mag_annotations_scaffold"),
-        slurm_partition=esc("partition", "mag_annotate__fix_dram_mag_annotations_scaffold"),
-        gres=lambda wc, attempt: f"{get_resources(wc, attempt, 'mag_annotate__fix_dram_mag_annotations_scaffold')['nvme']}",
+        runtime=esc("runtime", "mag_annotate__dram_mag__distill"),
+        mem_mb=esc("mem_mb", "mag_annotate__dram_mag__distill"),
+        cpus_per_task=esc("cpus", "mag_annotate__dram_mag__distill"),
+        slurm_partition=esc("partition", "mag_annotate__dram_mag__distill"),
+        gres=lambda wc, attempt: f"{get_resources(wc, attempt, 'mag_annotate__dram_mag__distill')['nvme']}",
         attempt=get_attempt,
-    retries: len(get_escalation_order("mag_annotate__fix_dram_mag_annotations_scaffold"))
+    retries: len(get_escalation_order("mag_annotate__dram_mag__distill"))
     params:
         config=config["dram-config"],
         outdir=lambda wildcards: f"{DRAMMAG}/{wildcards.assembly_id}",
