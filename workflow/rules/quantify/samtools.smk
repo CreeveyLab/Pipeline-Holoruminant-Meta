@@ -21,7 +21,7 @@ rule quantify__samtools__stats_cram:
         attempt=get_attempt,
     retries: len(get_escalation_order("quantify__samtools__stats_cram"))
     shell:
-        "samtools stats --reference {input.reference} {input.cram} > {output.txt} 2> {log}"
+        "samtools stats --reference {input.reference} {input.cram} > {output.txt}.tmp 2> {log} && mv {output.txt}.tmp {output.txt}"
 
 
 rule quantify__samtools:

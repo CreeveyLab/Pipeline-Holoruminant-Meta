@@ -69,11 +69,15 @@ rule preprocess__bowtie2__map:
 
         ( bowtie2 -x {input.mock} -1 {input.forward_} -2 {input.reverse_} \
             --threads {threads} --rg-id '{params.rg_id}' --rg '{params.rg_extra}' \
-        | samtools sort -l 9 -M -m {params.samtools_mem} -o {output.cram} \
+        | samtools sort -l 9 -M -m {params.samtools_mem} -o {output.cram}.tmp \
             --reference {input.reference} --threads {threads} ) \
         2>> {log}.{resources.attempt} 1>&2
 
-        samtools idxstats {output.cram} | awk '{{print $1, $3}}' > {output.counts}
+        mv {output.cram}.tmp {output.cram}
+
+        samtools idxstats {output.cram} | awk '{{print $1, $3}}' > {output.counts}.tmp
+
+        mv {output.counts}.tmp {output.counts}
 
         mv {log}.{resources.attempt} {log}
         """
@@ -145,8 +149,10 @@ rule preprocess__store_final_fastq:
     retries: len(get_escalation_order("preprocess__store_final_fastq"))
     shell:
         """
-        cp {input.forward_} {output.forward_}
-        cp {input.reverse_} {output.reverse_}
+        cp {input.forward_} {output.forward_}.tmp
+        cp {input.reverse_} {output.reverse_}.tmp
+        mv {output.forward_}.tmp {output.forward_}
+        mv {output.reverse_}.tmp {output.reverse_}
         """
 
 # ---------- preprocess__bowtie2__extract_nonhost ----------

@@ -80,8 +80,10 @@ rule contig_annotate__ncyc__run:
                             -m diamond -f fa -s prot \
                             -si {input}  \
                             -of {params.outdir} \
-                            -o {output} >> {log} 2>&1
-        
+                            -o {output}.tmp >> {log} 2>&1
+
+        mv {output}.tmp {output}
+
         echo "=== Finished contig_annotate__ncyc__run ===" >> {log} 2>&1
         """
 

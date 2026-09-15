@@ -105,8 +105,10 @@ rule contig_annotate__diamond__assign:
 
         echo "Running Diamond using DB_LOC=$DB_LOC" 2>> {log}.{resources.attempt} 1>&2
 
-        diamond blastp -d "$DB_LOC" -q {input.fa} -o {output} -p {threads} 2>> {log}.{resources.attempt}
-  
+        diamond blastp -d "$DB_LOC" -q {input.fa} -o {output}.tmp -p {threads} 2>> {log}.{resources.attempt}
+
+        mv {output}.tmp {output}
+
         if [ "{params.run_in_shm}" = "True" ] && [ "$DB_DST" = "$DB_SHM" ]; then
             rm -rfv "$DB_DST" 2>> {log}.{resources.attempt}
         fi

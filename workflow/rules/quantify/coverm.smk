@@ -38,8 +38,10 @@ rule quantify__coverm__genome_run:
             --methods {params.method} \
             --separator {params.separator} \
             --min-covered-fraction {params.min_covered_fraction} \
-        > {output.tsv} \
+        > {output.tsv}.tmp \
         ) 2> {log}
+
+        mv {output.tsv}.tmp {output.tsv}
         """
 
 
@@ -119,8 +121,10 @@ rule quantify__coverm__contig_one:
             --bam-files /dev/stdin \
             --methods {params.method} \
             --proper-pairs-only \
-        > {output.tsv} \
+        > {output.tsv}.tmp \
         ) 2> {log}
+
+        mv {output.tsv}.tmp {output.tsv}
         """
 
 

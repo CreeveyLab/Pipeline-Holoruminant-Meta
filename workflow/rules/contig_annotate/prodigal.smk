@@ -27,13 +27,17 @@ rule contig_annotate__prodigal_run:
     retries: len(get_escalation_order("contig_annotate__prodigal_run"))
     params:
         tmp_file=lambda wildcards: f"{CONTIG_PRODIGAL}/{wildcards.assembly_id}.fa",
-    shell:""" 
+    shell:"""
          prodigal -i <(gunzip -c {input.assembly}) \
-                  -o {output.gtf} \
-                  -a {output.fa} \
+                  -o {output.gtf}.tmp \
+                  -a {output.fa}.tmp \
                   -p meta -f gff
-                  
-         grep -v '^#' {output.gtf} > {output.gtfplain}
+
+         mv {output.gtf}.tmp {output.gtf}
+         mv {output.fa}.tmp {output.fa}
+
+         grep -v '^#' {output.gtf} > {output.gtfplain}.tmp
+         mv {output.gtfplain}.tmp {output.gtfplain}
     """
     
 checkpoint contig_annotate__cut_prodigal:

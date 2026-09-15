@@ -17,7 +17,8 @@ rule mag_annotate__dram__annotate:
         config=config["dram-config"],
         min_contig_size=1500,
         out_dir=DRAM,
-        tmp_dir=DRAM / "annotate",
+        tmp_dir=DRAM / "annotate_tmp",
+        final_dir=DRAM / "annotate",
         parallel_retries=5,
     threads: esc("cpus", "mag_annotate__dram__annotate")
     resources:
@@ -31,11 +32,11 @@ rule mag_annotate__dram__annotate:
     shell:
         """
         rm -rf {params.tmp_dir}
-        
+
         echo "Hostname: $(hostname)" 2>> {log} 1>&2
         echo "Temporary directory: $TMPDIR" 2>> {log} 1>&2
         df -h 2>> {log} 1>&2
-        
+
         DRAM.py annotate \
                 --config_loc {params.config} \
                 --input_fasta {input.dereplicated_genomes} \
@@ -43,13 +44,20 @@ rule mag_annotate__dram__annotate:
                 --threads {threads} \
                 --gtdb_taxonomy {input.gtdbtk_summary} \
         2>> {log} 1>&2
-        
+
         for f in annotations.tsv trnas.tsv rrnas.tsv; do
           if [ ! -f "{params.tmp_dir}/$f" ]; then
             echo "DRAM did not generate $f -> creating empty file" >> {log}
             touch "{params.tmp_dir}/$f"
           fi
         done
+
+        mkdir -p {params.final_dir}
+        mv {params.tmp_dir}/annotations.tsv {params.final_dir}/
+        mv {params.tmp_dir}/trnas.tsv {params.final_dir}/
+        mv {params.tmp_dir}/rrnas.tsv {params.final_dir}/
+        mv {params.tmp_dir}/genes.faa {params.final_dir}/
+        rm -rf {params.tmp_dir}
 
     """
 

@@ -80,8 +80,10 @@ rule read_annotate__ncyc__run:
                             -m diamond -f fq.gz -s nucl \
                             -si {input}  \
                             -of {params.outdir} \
-                            -o {output} >> {log} 2>&1
-        
+                            -o {output}.tmp >> {log} 2>&1
+
+        mv {output}.tmp {output}
+
         echo "=== Finished read_annotate__ncyc__run ===" >> {log} 2>&1
         """
 

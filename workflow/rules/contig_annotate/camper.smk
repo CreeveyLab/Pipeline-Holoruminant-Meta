@@ -59,7 +59,7 @@ rule contig_annotate__camper__annotate:
         2>> {log} 1>&2
 
         camper_distill  -a $tmpdir/annotations.tsv \
-                        -o {output.distillate} \
+                        -o $tmpdir/distillate.tsv \
 	                      --camper_distillate $tmp_db_dir/CAMPER_distillate.tsv \
 	      2>> {log} 1>&2
 	      

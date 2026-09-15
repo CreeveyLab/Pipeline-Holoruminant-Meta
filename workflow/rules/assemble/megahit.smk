@@ -61,17 +61,21 @@ rule assemble__megahit__run:
         | bgzip \
             -l9 \
             -@ {threads} \
-        > {output.fasta} \
+        > {output.fasta}.tmp \
         ) 2>> {log}.{resources.attempt}
+
+        mv {output.fasta}.tmp {output.fasta}
 
         tar \
             --create \
-            --file {output.tarball} \
+            --file {output.tarball}.tmp \
             --remove-files \
             --use-compress-program="pigz --best --processes {threads}" \
             --verbose \
             {params.out_dir} \
         2>> {log}.{resources.attempt} 1>&2
+
+        mv {output.tarball}.tmp {output.tarball}
 
         mv {log}.{resources.attempt} {log}
         """

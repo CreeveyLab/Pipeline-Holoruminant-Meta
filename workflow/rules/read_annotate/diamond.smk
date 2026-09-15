@@ -108,8 +108,11 @@ rule read_annotate__diamond__assign:
 
         echo "Running Diamond using DB_LOC=$DB_LOC" 2>> {log}.{resources.attempt} 1>&2
 
-        diamond blastx -d "$DB_LOC" -q {input.forwards} -o {output.out_R1} -p {threads} --max-target-seqs {params.max_target_seqs} 2>> {log}.{resources.attempt}
-        diamond blastx -d "$DB_LOC" -q {input.reverses} -o {output.out_R2} -p {threads} --max-target-seqs {params.max_target_seqs} 2>> {log}.{resources.attempt}
+        diamond blastx -d "$DB_LOC" -q {input.forwards} -o {output.out_R1}.tmp -p {threads} --max-target-seqs {params.max_target_seqs} 2>> {log}.{resources.attempt}
+        diamond blastx -d "$DB_LOC" -q {input.reverses} -o {output.out_R2}.tmp -p {threads} --max-target-seqs {params.max_target_seqs} 2>> {log}.{resources.attempt}
+
+        mv {output.out_R1}.tmp {output.out_R1}
+        mv {output.out_R2}.tmp {output.out_R2}
 
         if [ "{params.run_in_shm}" = "True" ] && [ "$DB_DST" = "$DB_SHM" ]; then
             rm -rfv "$DB_DST" 2>> {log}.{resources.attempt}

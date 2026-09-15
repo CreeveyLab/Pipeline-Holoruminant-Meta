@@ -162,7 +162,8 @@ rule contig_annotate__eggnog_merge_annotations:
     log:
         CONTIG_EGGNOG / "{assembly_id}/eggnog_output.emapper.annotations.log"
     shell:"""
-       cat {input} > {output} 2> {log}
+       cat {input} > {output}.tmp 2> {log}
+       mv {output}.tmp {output}
     """
 
 

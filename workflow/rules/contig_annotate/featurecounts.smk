@@ -25,8 +25,9 @@ if params["assemble"]["samtools"]["out_type"].upper() == "CRAM":
             echo "Start time: $(date)" >> {log}
             
             #samtools index {input} 2> {log} 1>&2
-            samtools view -b -o {output} {input} 2> {log} 1>&2
-            
+            samtools view -b -o {output}.tmp {input} 2> {log} 1>&2
+            mv {output}.tmp {output}
+
             echo "End time: $(date)" >> {log}
             echo "=== Finished running cramToBam for assembly {wildcards.assembly_id}, sample {wildcards.sample_id} and library {wildcards.library_id} ===" >> {log}
             """
@@ -57,10 +58,16 @@ rule contig_annotate__featurecounts_run:
         featureCounts -p \
                       -T {threads} \
                       -a {input.gtf} \
-                      -o {output.file} \
+                      -o {output.file}.tmp \
                       -t CDS \
                       -g ID \
                       {input.bam} 2> {log}
+
+        mv {output.file}.tmp {output.file}
+
+        if [ -f "{output.file}.tmp.summary" ]; then
+            mv {output.file}.tmp.summary {output.file}.summary
+        fi
     """
     
     

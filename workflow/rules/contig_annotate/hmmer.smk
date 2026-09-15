@@ -33,16 +33,22 @@ rule contig_annotate__hmmer__assign:
            echo "Start time: $(date)" >> {log}
         
            hmmsearch \
-            -o {output.out} \
-            -A {output.aln} \
-            --tblout {output.tblout} \
-            --domtblout {output.domtblout} \
-            --pfamtblout {output.pfam} \
+            -o {output.out}.tmp \
+            -A {output.aln}.tmp \
+            --tblout {output.tblout}.tmp \
+            --domtblout {output.domtblout}.tmp \
+            --pfamtblout {output.pfam}.tmp \
             --acc \
             --domT {params.domt} \
             {input.database} \
             {input.fa} 2>> {log} 1>&2
-            
+
+            mv {output.out}.tmp {output.out}
+            mv {output.aln}.tmp {output.aln}
+            mv {output.tblout}.tmp {output.tblout}
+            mv {output.domtblout}.tmp {output.domtblout}
+            mv {output.pfam}.tmp {output.pfam}
+
             echo "End time: $(date)" >> {log}
             echo "=== hmmsearch finished for assembly {wildcards.assembly_id} ===" >> {log}
         """

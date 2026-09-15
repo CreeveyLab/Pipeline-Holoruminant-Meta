@@ -132,11 +132,14 @@ rule read_annotate__kraken2__assign:
                 --threads {threads} \
                 --gzip-compressed \
                 --paired \
-                --output >(pigz --processes {threads} > "$output") \
-                --report "$report" \
+                --output >(pigz --processes {threads} > "$output.tmp") \
+                --report "$report.tmp" \
                 --memory-mapping \
                 "$forward" "$reverse" \
             2> "$log_file" 1>&2
+
+            mv "$report.tmp" "$report"
+            mv "$output.tmp" "$output"
         done
 
         if [ "{params.run_in_shm}" = "True" ] && [ "$DB_DST" = "$DB_SHM" ]; then

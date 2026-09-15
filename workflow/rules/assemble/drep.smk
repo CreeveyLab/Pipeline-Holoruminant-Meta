@@ -129,8 +129,10 @@ rule assemble__drep__join_genomes:
         | bgzip \
             --compress-level 9 \
             --threads {threads} \
-        > {output} \
+        > {output}.tmp \
         ) 2> {log}
+
+        mv {output}.tmp {output}
         """
 
 

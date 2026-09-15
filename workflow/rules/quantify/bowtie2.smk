@@ -73,10 +73,12 @@ rule quantify__bowtie2__map:
             -l 9 \
             -M \
             -m {params.samtools_mem} \
-            -o {output.cram} \
+            -o {output.cram}.tmp \
             --reference {input.reference} \
             --threads {threads} \
         ) 2>> {log} 1>&2
+
+        mv {output.cram}.tmp {output.cram}
         """
 
 

@@ -94,10 +94,12 @@ rule assemble__bowtie2__map:
             -l 9 \
             -m {params.samtools_mem} \
             -O {params.samtools_outtype} \
-            -o {output.file} \
+            -o {output.file}.tmp \
             --threads {threads} \
             {output.tmp_bam} 2>> {log}.{resources.attempt}
-        
+
+        mv {output.file}.tmp {output.file}
+
         echo "=== Finished assemble__bowtie2__map for assembly {wildcards.assembly_id}, sample {wildcards.sample_id} and library {wildcards.library_id} ===" > {log}.{resources.attempt} 1>&2
 
         mv {log}.{resources.attempt} {log}

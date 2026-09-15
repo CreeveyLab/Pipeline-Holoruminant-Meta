@@ -54,7 +54,7 @@ rule mag_annotate__camper__annotate:
                         2>> {log} 1>&2
         
         camper_distill  -a $tmpdir/annotations.tsv \
-                        -o {output.distill} \
+                        -o $tmpdir/distill.tsv \
 	                      --camper_distillate $tmp_db_dir/CAMPER_distillate.tsv \
 	      2>> {log} 1>&2
 	      

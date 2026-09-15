@@ -21,8 +21,10 @@ rule reference__hosts__recompress:
         """
         echo "$(date) **Starting rule reference__hosts__recompress**" > {log}
 
-        (gzip -dc {input.fa_gz} | bgzip -@ {threads} > {output}) 2> {log}
-        
+        (gzip -dc {input.fa_gz} | bgzip -@ {threads} > {output}.tmp) 2> {log}
+
+        mv {output}.tmp {output}
+
         echo "$(date) **Finished rule reference__hosts__recompress**" >> {log}
         """
 
