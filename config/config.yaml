@@ -141,6 +141,41 @@ resource_sets:
     cpus: 8
     partition: "k2-medpri,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
+
+  # Real root cause found 2026-09-15 by reproducing the constructed sbatch
+  # call by hand (see preprocess_37131_lib1 group failures): a Snakemake
+  # `group:` job's total requested runtime is the SUM of its member rules'
+  # individual runtimes (9 sequential rules in the preprocess group), and
+  # `preprocess__bowtie2__extract_nonhost_run`/`preprocess__store_final_fastq`
+  # were both on the shared `small` tier (300min each) -- generous and
+  # correct for an INDIVIDUAL submission, but summed across the whole group
+  # (180 fastp + 4x180 map + 4x300 extract + 300 finalize = 2400min) it
+  # exceeded k2-medpri's real 1440min (24h) cap, and SLURM rejects the
+  # *entire* multi-partition submission if --time exceeds ANY listed
+  # partition's cap (the exact bug this whole fork exists to fix, Section 1
+  # of CLAUDE.md -- recurring one layer up at the group level). Confirmed via
+  # `sbatch --parsable ... -t 2400 -p k2-medpri,k2-lowpri,k2-bioinf` run by
+  # hand: "Requested time limit is invalid (missing or exceeds some limit)".
+  # `small` is shared by ~35 other, ungrouped rules where this doesn't apply
+  # (each submits individually) -- do not edit it; these two dedicated tiers
+  # exist so the grouped rules can be sized tightly without touching it.
+  kelvin_preprocess_extract:  # bowtie2__extract_nonhost_run (grouped, x4 hosts)
+    runtime: 100          # real max 51min (CLAUDE.md Section 2) -- ~2x headroom
+    mem_mb: 16000          # unchanged from `small`, not the bottleneck here
+    cpus: 1
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
+  kelvin_preprocess_finalize:  # store_final_fastq (grouped): 2x cp + 2x mv only
+    runtime: 30          # no direct real benchmark yet for this exact rule
+                          # (new in this fork vs. the old install) -- generous
+                          # given it's copying already-produced, already-
+                          # decontaminated fastq.gz files; revisit with real
+                          # data once captured.
+    mem_mb: 16000
+    cpus: 1
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
     
  # The previous node is used for setting up a ramdisc for time-critical tasks. Make sure, that the allocation ensures that the entire node is
  # requested for the job so that there won't be other users on the same node while the job runs. Their jobs might get affected by the
