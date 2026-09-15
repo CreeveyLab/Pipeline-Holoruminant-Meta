@@ -3,10 +3,9 @@
 # Kelvin2 launch wrapper for holor-pipeline-fork.
 #
 # Modeled on run_Snakebite-Holoruminant-MetaG.sh (this repo's generic
-# template) plus the validated Apptainer/Singularity bind-mount list from the
-# old locally-installed pipeline's Kelvin run script
-# (/mnt/scratch2/users/3053301/holor_pipeline_project/run_Pipeline-Holoruminant-meta.sh)
-# -- that bind list is real, hard-won knowledge (see CLAUDE.md incident #4:
+# template) plus a validated Apptainer/Singularity bind-mount list carried
+# over from an earlier, locally-installed Kelvin run of this pipeline --
+# that bind list is real, hard-won knowledge (see CLAUDE.md incident #4:
 # a missing bind path surfaces as a misleading "filesystem latency" error, not
 # an obvious permissions error), reused here rather than rediscovered.
 #
@@ -17,9 +16,14 @@
 
 # Set the project relevant paths
 ################################################################################
-projectFolder="/mnt/scratch2/users/3053301/holor_pipeline_project"
+# EDIT ME: point this at your own project directory (see
+# workflow/scripts/bootstrap_project.sh, which generates this file with the
+# right value substituted automatically -- prefer that over editing by hand).
+projectFolder="/mnt/scratch2/users/<your-username>/<your-project-name>"
 configFile="${projectFolder}/config/config.yaml"
-pipelineFolder="/users/3053301/holor-pipeline-fork"
+# Pipeline folder is this fork's own location -- derived automatically, no
+# need to edit.
+pipelineFolder="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 Profile=$projectFolder/config/profiles/Kelvin
 
@@ -61,8 +65,12 @@ mkdir -p "$projectFolder/tmp"
 # (not mv/rename, per explicit instruction: no write access to
 # My_holor_project, and the copy leaves it fully untouched regardless).
 # Verified: 2.75TB / 249,400 files transferred, 0 errors, source untouched.
+# If your project needs an extra host path bound in (e.g. self-provided
+# assemblies living outside projectFolder), add it here -- keep this list
+# to paths this pipeline itself actually needs, not other unrelated
+# projects' directories.
 ################################################################################
-BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources/,${pipelineFolder}/workflow/scripts,/mnt/scratch2/igfs-anaconda/conda-dbs/kraken2/k2_pluspfp_20240904,/mnt/scratch2/users/3053301/infinity-seq"
+BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources/,${pipelineFolder}/workflow/scripts,/mnt/scratch2/igfs-anaconda/conda-dbs/kraken2/k2_pluspfp_20240904"
 
 # Shared, group-writable Apptainer/Singularity image cache (config/.docker.yml's
 # ~23 containers), not a per-project docker_images/ folder. Snakemake's own
