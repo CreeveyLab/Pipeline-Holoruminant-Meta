@@ -49,7 +49,8 @@ checkpoint contig_annotate__cut_prodigal:
     output:
         directory(CONTIG_PRODIGAL / "{assembly_id}/Chunks/")
     params:
-        out=lambda wildcards: CONTIG_PRODIGAL / f"{wildcards.assembly_id}/Chunks/prodigal.chunk",
+        tmp_dir=lambda wildcards: Path(str(CONTIG_PRODIGAL / wildcards.assembly_id) + "_Chunks_tmp"),
+        out=lambda wildcards: Path(str(CONTIG_PRODIGAL / wildcards.assembly_id) + "_Chunks_tmp") / "prodigal.chunk",
         folder=config["pipeline_folder"],
         split=params["contig_annotate"]["prodigal"]["split"]
     log:
@@ -66,9 +67,11 @@ checkpoint contig_annotate__cut_prodigal:
     container:
         docker["mag_annotate"]
     shell:"""
-       mkdir -p {output}
+       rm -rf {params.tmp_dir}
+       mkdir -p {params.tmp_dir}
        {params.folder}/workflow/scripts/cutProdigal.sh {params.split} {params.out} {input} 2>> {log} 1>&2
-    """    
+       mv {params.tmp_dir} {output}
+    """
     
 rule contig_annotate__prodigal:
     """Run prodigal on all assemblies"""

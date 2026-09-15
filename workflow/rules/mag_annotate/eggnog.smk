@@ -9,7 +9,8 @@ rule mag_annotate__eggnog:
     container:
         docker["eggnog"]
     params:
-        out_dir=EGGNOG,
+        out_dir=lambda w: Path(str(EGGNOG) + "_tmp"),
+        final_dir=EGGNOG,
         db=features["databases"]["eggnog"],
         prefix="eggnog"
     threads: esc("cpus", "mag_annotate__eggnog")
@@ -23,8 +24,11 @@ rule mag_annotate__eggnog:
     retries: len(get_escalation_order("mag_annotate__eggnog"))
     shell:
         """
+        rm -rf {params.out_dir}
+        mkdir -p {params.out_dir}
+
          cp -r {params.db}/* $TMPDIR  2>> {log} 1>&2;
-        
+
         emapper.py -m diamond \
                    --data_dir $TMPDIR \
                    --itype metagenome \
@@ -37,4 +41,13 @@ rule mag_annotate__eggnog:
                    --output_dir {params.out_dir} \
                    -o {params.prefix}  \
                    2>> {log} 1>&2;
+
+        # {log} lives inside {params.final_dir} itself, so Snakemake will
+        # have already created that directory (empty, just to hold the
+        # log) before this shell ran -- a plain `mv` of the whole tmp dir
+        # onto an existing directory would nest instead of replacing it.
+        # Merge contents in instead.
+        mkdir -p {params.final_dir}
+        mv {params.out_dir}/* {params.final_dir}/
+        rmdir {params.out_dir}
         """

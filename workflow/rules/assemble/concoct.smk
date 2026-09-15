@@ -22,10 +22,12 @@ rule assemble__concoct_run:
         attempt=get_attempt,
     retries: len(get_escalation_order("assemble__concoct_run"))
     params:
-        workdir=lambda w: CONCOCT / w.assembly_id,
+        workdir=lambda w: Path(str(CONCOCT / w.assembly_id) + "_tmp"),
+        final_dir=lambda w: CONCOCT / w.assembly_id,
     shell:
         """
-        mkdir --parents --verbose {params.workdir} 2> {log} 1>&2
+        rm --recursive --force {params.workdir} 2> {log} 1>&2
+        mkdir --parents --verbose {params.workdir} 2>> {log} 1>&2
 
         cut_up_fasta.py \
             <(gzip --decompress --stdout {input.assembly}) \
@@ -95,6 +97,8 @@ rule assemble__concoct_run:
             --verbose \
             {params.workdir}/*.fa \
         2>> {log} 1>&2
+
+        mv {params.workdir} {params.final_dir}
         """
 
 

@@ -24,11 +24,13 @@ rule assemble__maxbin2__run:
     retries: len(get_escalation_order("assemble__maxbin2__run"))
     params:
         seed=1,
-        coverage=lambda w: MAXBIN2 / f"{w.assembly_id}/maxbin2.coverage",
+        workdir=lambda w: Path(str(MAXBIN2 / w.assembly_id) + "_tmp"),
+        coverage=lambda w: Path(str(MAXBIN2 / w.assembly_id) + "_tmp") / "maxbin2.coverage",
         minLen=params["assemble"]["maxbin"]["min_contig_len"],
     shell:
         """
-        mkdir --parents {output.workdir}
+        rm --recursive --force {params.workdir}
+        mkdir --parents {params.workdir}
 
         ( samtools coverage {input.alignments} \
           | awk '{{print $1"\t"$5}}' \
@@ -40,18 +42,18 @@ rule assemble__maxbin2__run:
         run_MaxBin.pl \
             -thread {threads} \
             -contig {input.assembly} \
-            -out {output.workdir}/maxbin2 \
+            -out {params.workdir}/maxbin2 \
             -abund {params.coverage} \
             -min_contig_length {params.minLen} \
         2> {log} 1>&2
 
         rename \
             's/\\.fasta$/.fa/' \
-            {output.workdir}/*.fasta \
+            {params.workdir}/*.fasta \
         2>> {log}
-        
 
-        fa_files=$(find {output.workdir} -name "*.fa")
+
+        fa_files=$(find {params.workdir} -name "*.fa")
         for fa in $fa_files; do
             pigz --best --verbose "$fa"
         done 2>> {log} 1>&2
@@ -59,9 +61,11 @@ rule assemble__maxbin2__run:
         rm \
             --recursive \
             --force \
-            {output.workdir}/maxbin.{{coverage,log,marker,noclass,summary,tooshort}} \
-            {output.workdir}/maxbin2.marker_of_each_bin.tar.gz \
+            {params.workdir}/maxbin.{{coverage,log,marker,noclass,summary,tooshort}} \
+            {params.workdir}/maxbin2.marker_of_each_bin.tar.gz \
         2>> {log} 1>&2
+
+        mv {params.workdir} {output.workdir}
         """
 
 

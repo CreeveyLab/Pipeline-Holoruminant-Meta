@@ -15,7 +15,8 @@ rule assemble__metabat2__run:
     container:
         docker["assemble"]
     params:
-        bins_prefix=lambda w: METABAT2 / f"{w.assembly_id}/bin",
+        bins_tmp_dir=lambda w: Path(str(METABAT2 / w.assembly_id) + "_tmp"),
+        bins_prefix=lambda w: Path(str(METABAT2 / w.assembly_id) + "_tmp") / "bin",
         bams=compose_bams_for_metabat2_run,
         depth=lambda w: METABAT2 / f"{w.assembly_id}.depth",
         paired=lambda w: METABAT2 / f"{w.assembly_id}.paired",
@@ -32,6 +33,9 @@ rule assemble__metabat2__run:
     retries: len(get_escalation_order("assemble__metabat2__run"))
     shell:
         """
+        rm --recursive --force {params.bins_tmp_dir}
+        mkdir --parents {params.bins_tmp_dir}
+
         for aln in {input.alignments}; do
 
             # Remove extension: .bam or .cram
@@ -75,10 +79,12 @@ rule assemble__metabat2__run:
             {params.paired} \
         2>> {log} 1>&2
 
-        fa_files=$(find {output.bins} -name "*.fa")
+        fa_files=$(find {params.bins_tmp_dir} -name "*.fa")
         for fa in $fa_files; do
             pigz --best --verbose "$fa"
         done 2>> {log} 1>&2
+
+        mv {params.bins_tmp_dir} {output.bins}
         """
 
 
