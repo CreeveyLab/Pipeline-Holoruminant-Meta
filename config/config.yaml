@@ -126,7 +126,18 @@ resource_sets:
 
   kelvin_preprocess_map:      # bowtie2__map (heaviest preprocess stage)
     runtime: 180          # 3h vs. real max 44min
-    mem_mb: 49000          # ~48GB vs. real max 38.1GB
+    # Single tier only, real-data headroom bumped up from 49000 -- this rule is
+    # part of the "preprocess_{sample}_{library}" group (see rules/preprocess/
+    # {fastp,bowtie2}.smk), and a real, reproduced test (2026-09-15, toy
+    # group+retries repro under /mnt/scratch2/users/3053301/group_retry_toy)
+    # confirmed retries: inside an already-running group allocation cannot
+    # actually get more resources -- the retry just re-executes inside the
+    # SAME fixed SLURM job, silently ignoring any larger attempt-2 request.
+    # This rule previously escalated "kelvin_preprocess_map,large" -- a no-op
+    # once grouped, and load-bearing on nothing since the escalation never
+    # takes effect. Sized generously up front instead; do not re-add a second
+    # escalation tier here while this rule stays grouped.
+    mem_mb: 64000          # ~63GB vs. real max 38.1GB (was 49000)
     cpus: 8
     partition: "k2-medpri,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
