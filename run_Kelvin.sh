@@ -56,13 +56,13 @@ echo "Pipeline folder   : ${pipelineFolder}"
 mkdir -p slurm_out
 mkdir -p "$projectFolder/tmp"
 
-# Bind-mount list (see header comment). NOTE: still points at
-# My_holor_project/resources -- update to
-# /mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources/ once the
-# reference/database store migration (Section 6 step 1, copy in progress at
-# time of writing) is complete and verified.
+# Bind-mount list (see header comment). Points at the central reference/
+# database store (Section 6 step 1) -- migrated 2026-09-15 via rsync copy
+# (not mv/rename, per explicit instruction: no write access to
+# My_holor_project, and the copy leaves it fully untouched regardless).
+# Verified: 2.75TB / 249,400 files transferred, 0 errors, source untouched.
 ################################################################################
-BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scratch2/igfs-databases/Holoruminant/My_holor_project/resources/,${pipelineFolder}/workflow/scripts,/mnt/scratch2/igfs-anaconda/conda-dbs/kraken2/k2_pluspfp_20240904,/mnt/scratch2/users/3053301/infinity-seq"
+BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources/,${pipelineFolder}/workflow/scripts,/mnt/scratch2/igfs-anaconda/conda-dbs/kraken2/k2_pluspfp_20240904,/mnt/scratch2/users/3053301/infinity-seq"
 
 # Shared, group-writable Apptainer/Singularity image cache (config/.docker.yml's
 # ~23 containers), not a per-project docker_images/ folder. Snakemake's own
