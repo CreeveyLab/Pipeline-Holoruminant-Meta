@@ -58,11 +58,28 @@ mkdir -p "$projectFolder/tmp"
 
 # Bind-mount list (see header comment). NOTE: still points at
 # My_holor_project/resources -- update to
-# /mnt/scratch2/igfs-databases/Holoruminant/resources/ once the reference/
-# database store migration (Section 6 step 1, on hold pending sign-off from
-# whoever owns My_holor_project) actually happens.
+# /mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources/ once the
+# reference/database store migration (Section 6 step 1, copy in progress at
+# time of writing) is complete and verified.
 ################################################################################
 BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scratch2/igfs-databases/Holoruminant/My_holor_project/resources/,${pipelineFolder}/workflow/scripts,/mnt/scratch2/igfs-anaconda/conda-dbs/kraken2/k2_pluspfp_20240904,/mnt/scratch2/users/3053301/infinity-seq"
+
+# Shared, group-writable Apptainer/Singularity image cache (config/.docker.yml's
+# ~23 containers), not a per-project docker_images/ folder. Snakemake's own
+# image cache filename is md5(container URL).simg (snakemake/deployment/
+# singularity.py) -- purely a function of the image URI, confirmed both in
+# source and empirically (identical hash/bytes seen in two unrelated
+# projects) -- so every project pointed at the same prefix transparently
+# shares pulls: whoever touches a given container first triggers the pull,
+# everyone else just reuses the file. Pre-pulled once for 22 of the 23
+# images in .docker.yml (2026-09-14), specifically to avoid a first-pull
+# race between concurrent users; hrp_vamb:0.1 failed to pull (Docker Hub
+# access denied -- image is private or gone) but isn't actually referenced
+# by any rule (only a commented-out note in workflow/rules/folders.smk),
+# so this doesn't block anything. A still-missing image would only be
+# pulled fresh if .docker.yml adds a new one later, or if hrp_vamb ever
+# becomes real and gets wired into a rule.
+SINGULARITY_PREFIX="/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-containers/"
 
 snakemake -s "$pipelineFolder/workflow/Snakefile" \
           --jobs 150 \
@@ -70,7 +87,7 @@ snakemake -s "$pipelineFolder/workflow/Snakefile" \
           --configfile "$configFile" \
           --profile "$Profile" \
           --singularity-args "-B $BIND_PATHS" \
-          --singularity-prefix "$projectFolder/docker_images/" \
+          --singularity-prefix "$SINGULARITY_PREFIX" \
           --latency-wait 60 \
           --scheduler greedy \
           --resources metaspades_slots=$metaspades_slots \

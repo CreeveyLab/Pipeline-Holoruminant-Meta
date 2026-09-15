@@ -70,7 +70,7 @@ echo "Bootstrapping project at : $PROJECT_DIR"
 echo "Pipeline folder          : $PIPELINE_FOLDER"
 echo "Resources                : $RESOURCES_PATH"
 
-mkdir -p "$PROJECT_DIR"/{config,reads,tmp,docker_images,slurm_out}
+mkdir -p "$PROJECT_DIR"/{config,reads,tmp,slurm_out}
 
 # Copy config/ wholesale -- same pattern docs/02-Installation.md documents
 # ("cp -r config $PROJECTFOLDER"), just sourced from this fork.
