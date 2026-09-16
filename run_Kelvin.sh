@@ -36,6 +36,22 @@ export SINGULARITY_CACHEDIR="${projectFolder}/tmp"
 mkdir -p "$APPTAINER_TMPDIR"
 mkdir -p "$SINGULARITY_TMPDIR"
 
+# Real fix, found and verified 2026-09-16 during the first successful real
+# preprocess_{sample}_{library} group run: without squashfuse, Apptainer
+# falls back to fully re-extracting each ~1GB container image into a fresh
+# temporary sandbox on EVERY invocation ("Converting SIF file to temporary
+# sandbox..."), which measured as a uniform ~2.6-3.6x slowdown across every
+# single rule in that run (fastp, bowtie2, samtools alike -- the slowdown
+# tracked container invocations, not any one tool). squashfuse isn't a
+# Kelvin2 module; it exists only as a standalone conda env someone in the
+# lab already built. Putting its bin/ on PATH lets Apptainer mount the SIF's
+# squashfs directly instead of extracting it (confirmed: ~0.5s vs. many
+# seconds per invocation, real containers, real bind list). Apptainer's
+# setuid install refuses FUSE-mounting by default ("configuration disallows
+# users from mounting SIF squashFS partition in setuid mode") -- --userns
+# below is required alongside this, not optional.
+export PATH="/mnt/scratch2/igfs-anaconda/conda-envs/squashfuse-0.6.1-hc12fc2f_0/bin:$PATH"
+
 # Helper: read YAML value (simple key: value, no nesting)
 ################################################################################
 read_yaml() {
@@ -102,7 +118,7 @@ snakemake -s "$pipelineFolder/workflow/Snakefile" \
           --use-singularity \
           --configfile "$configFile" \
           --profile "$Profile" \
-          --singularity-args "-B $BIND_PATHS" \
+          --singularity-args "--userns -B $BIND_PATHS" \
           --singularity-prefix "$SINGULARITY_PREFIX" \
           --latency-wait 60 \
           --scheduler greedy \
