@@ -224,7 +224,121 @@ resource_sets:
     cpus: 1
     partition: "k2-lowpri,k2-bioinf"
     nvme: "nvme:10"
-    
+
+  # --- read_annotate tools (2026-09-19) ---
+  # First real attempt at read_annotate for this fork. Unlike preprocess,
+  # there's no real benchmark data yet -- these are evidence-based estimates
+  # from each tool's own documentation/community-reported figures, cross-
+  # checked against this pipeline's real config (no diamond --block-size
+  # override -> uses diamond's own default; kraken2's real 189GB database;
+  # our real sample's real read counts from its own fastp report), NOT
+  # blind "database size" guesses. Confidence varies per tool -- see the
+  # per-tier comments. Revisit all of these with real benchmark: data once
+  # this actually runs; treat these as a deliberately low starting point to
+  # try, same spirit as every other tier in this file.
+  #
+  # k2-hipri is real (confirmed via sinfo, not assumed): 180min cap, same
+  # big-memory node pool as medpri/lowpri/bioinf. Included only for tools
+  # with real evidence their runtime fits comfortably under that -- SLURM
+  # rejects the whole submission if --time exceeds ANY listed partition's
+  # cap, so getting this wrong for a tool that's genuinely slow would break
+  # its submission outright, not just miss out on the faster queue.
+
+  kelvin_read_kraken2:  # kraken2__assign -- real DB 189GB, staged into /dev/shm
+    runtime: 170          # classification itself is very fast (>93M reads/min
+                          # per Kraken2's own paper); real bottleneck is
+                          # copying the 189GB DB into /dev/shm first. Included
+                          # on hipri with real but accepted risk on DB-staging
+                          # I/O time -- untested, first real attempt.
+    mem_mb: 210000        # real DB size (189GB) + ~10% overhead
+    cpus: 16              # matches the throughput figure's own thread count
+    partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:200"      # fallback path if shm isn't used (KRAKEN2NVME) --
+                          # roughly DB-size, same reasoning as mem_mb
+
+  kelvin_read_diamond:  # diamond__assign -- real DB (cazy) only 1.8GB
+    runtime: 90           # small target DB, single query pass; not directly
+                          # benchmarked but strongly implied by DB/block size
+    mem_mb: 16000          # diamond's own docs: RAM ~= 6x --block-size(GB);
+                          # no override in this pipeline's params.yaml ->
+                          # default -b2.0 -> ~12GB + margin
+    cpus: 4
+    partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:10"        # matches old medium_nvme tier's nvme allocation
+
+  kelvin_read_humann:  # humann__run -- NOT a hipri candidate, real evidence
+    runtime: 900          # community-reported: 52.5+/-19.2 CPU-hours average
+                          # (HUMAnN3 paper); one real example: 9h wall-clock
+                          # w/ translated search on 40 cores. 900min=15h is
+                          # real margin under k2-medpri's 1440min cap, but
+                          # deliberately excludes k2-hipri -- would almost
+                          # certainly blow the 180min cap.
+    mem_mb: 32000          # docs: 16GB min, 20-25GB typical peak, up to ~72GB
+                          # in some larger-DB reports; picked above typical
+                          # peak, below worst case
+    cpus: 10
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
+  kelvin_read_metaphlan:  # metaphlan__run
+    runtime: 120           # not directly benchmarked; bowtie2-marker-
+                          # alignment tools of this kind are typically fast
+                          # even at large read depth -- medium confidence
+    mem_mb: 25000          # docs: 15GB (v4.0) vs 25GB (v4.1) minimum; exact
+                          # version unconfirmed (no dedicated container tag
+                          # found), used the safer/larger figure
+    cpus: 4
+    partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
+  kelvin_read_phyloflash:  # phyloflash__run
+    runtime: 150           # a recent benchmarking review cites phyloFlash
+                          # execution times "under one hour" generally;
+                          # margin added since it also runs an internal
+                          # SPAdes assembly of rRNA reads not covered by
+                          # that figure, and our sample is large
+    mem_mb: 16000          # docs: 10M 100bp paired reads in <5min on an 8GB
+                          # machine for the read-scan step; padded for the
+                          # internal assembly step
+    cpus: 4
+    partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:10"        # matches old medium_nvme tier's nvme allocation
+
+  kelvin_read_singlem:  # singlem__pipe
+    runtime: 120           # not directly benchmarked; docs emphasize
+                          # lightweight resource use, implying fast operation
+    mem_mb: 8000           # docs: "<4GB except in very large (>100Gbp)
+                          # metagenomes" -- our real sample is ~89Gbp, right
+                          # at that edge, so padded well above the stated
+                          # light-usage figure rather than trusting it as-is
+    cpus: 4
+    partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:10"        # matches old medium_nvme tier's nvme allocation
+
+  kelvin_read_nonpareil:  # nonpareil__run -- NOT a hipri candidate
+    runtime: 300           # docs: runtime scales LINEARLY with dataset size,
+                          # no absolute anchor point given to compute
+                          # against -- our real sample (171M reads, R1) is
+                          # large, so deliberately not risking the 180min cap
+    mem_mb: 24000          # real, computed from nonpareil's own documented
+                          # formula: RAM(GB) ~= 0.1 x (reads in millions) + 2,
+                          # using the real post-decontamination R1 read count
+                          # (171,055,183, cross-checked against metaspades's
+                          # own log) -> ~19.1GB + margin
+    cpus: 4
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
+  kelvin_read_krona:  # krona__visualize -- visualization only, no real DB
+    runtime: 30            # not doc-verified (didn't find/check documentation
+                          # for this one) -- low confidence, but it only
+                          # renders an HTML chart from an already-computed,
+                          # small taxonomy summary
+    mem_mb: 8000
+    cpus: 1
+    partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
  # The previous node is used for setting up a ramdisc for time-critical tasks. Make sure, that the allocation ensures that the entire node is
  # requested for the job so that there won't be other users on the same node while the job runs. Their jobs might get affected by the
  # /dev/shm access that is happening for rules using this resource_set!
