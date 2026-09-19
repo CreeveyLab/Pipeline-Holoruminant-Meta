@@ -268,14 +268,19 @@ resource_sets:
                           # wider blast radius), flagged as a real follow-up.
 
   kelvin_read_diamond:  # diamond__assign -- real DB (cazy) only 1.8GB
-    runtime: 90           # small target DB, single query pass; not directly
-                          # benchmarked but strongly implied by DB/block size
-    mem_mb: 16000          # diamond's own docs: RAM ~= 6x --block-size(GB);
-                          # no override in this pipeline's params.yaml ->
-                          # default -b2.0 -> ~12GB + margin
+    # Real evidence correction (2026-09-19): job 9937380 died with a real
+    # OOM kill ("diamond blastx ... Killed") after 2m53s at 16GB. The
+    # --block-size formula only covers the TARGET database's memory need --
+    # it says nothing about buffering the QUERY file, and this rule's query
+    # is one full read direction of a real 171M-read sample (~11GB
+    # compressed R1 alone), run per-thread (cpus: 4). Bumped substantially
+    # rather than guess a precise number a second time; still well under
+    # the original 160GB default. Revisit once it actually succeeds.
+    runtime: 90           # not implicated in the failure, left as-is
+    mem_mb: 64000
     cpus: 4
     partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
-    nvme: "nvme:0"  # was nvme:10 -- no real nvme gres on Kelvin2, see kelvin_read_kraken2
+    nvme: "nvme:0"  # no real nvme gres on Kelvin2, see kelvin_read_kraken2
 
   kelvin_read_humann:  # humann__run -- NOT a hipri candidate, real evidence
     runtime: 900          # community-reported: 52.5+/-19.2 CPU-hours average
