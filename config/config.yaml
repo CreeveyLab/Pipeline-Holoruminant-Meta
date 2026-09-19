@@ -314,14 +314,18 @@ resource_sets:
     nvme: "nvme:0"
 
   kelvin_read_phyloflash:  # phyloflash__run
-    runtime: 150           # a recent benchmarking review cites phyloFlash
-                          # execution times "under one hour" generally;
-                          # margin added since it also runs an internal
-                          # SPAdes assembly of rRNA reads not covered by
-                          # that figure, and our sample is large
-    mem_mb: 16000          # docs: 10M 100bp paired reads in <5min on an 8GB
-                          # machine for the read-scan step; padded for the
-                          # internal assembly step
+    # Real evidence correction (2026-09-19): job 9937379 hit a real,
+    # confirmed OOM ("Detected 2 oom_kill events... Out Of Memory") after
+    # 8m51s -- well within the 150min runtime budget, so only memory was
+    # short. Its own log shows why: phyloFlash invokes bbmap internally
+    # with -Xmx20g (its own hardcoded/auto-detected Java heap), which
+    # alone exceeds the 16GB this tier gave it, before even reaching the
+    # internal SPAdes assembly stage afterward. Bumped substantially;
+    # runtime evidence (8m51s, real OOM well before any time pressure)
+    # doesn't invalidate the "under an hour" documentation, so left on
+    # hipri.
+    runtime: 150
+    mem_mb: 48000
     cpus: 4
     partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"  # was nvme:10 -- no real nvme gres on Kelvin2, see kelvin_read_kraken2
