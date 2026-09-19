@@ -292,14 +292,20 @@ resource_sets:
     nvme: "nvme:0"
 
   kelvin_read_metaphlan:  # metaphlan__run
-    runtime: 120           # not directly benchmarked; bowtie2-marker-
-                          # alignment tools of this kind are typically fast
-                          # even at large read depth -- medium confidence
+    # Real evidence beats my earlier guess: job 9936992 (real run, sample
+    # 37131, 2026-09-19) hit TIMEOUT at exactly 120min, the runtime this
+    # tier originally requested. The "typically fast" assumption was wrong
+    # for this sample. No real upper bound known yet -- bumped generously
+    # and pulled off k2-hipri (confirmed NOT a fits-under-180min candidate)
+    # rather than guess a second time; revisit once a real completion time
+    # is known.
+    runtime: 400
     mem_mb: 25000          # docs: 15GB (v4.0) vs 25GB (v4.1) minimum; exact
                           # version unconfirmed (no dedicated container tag
-                          # found), used the safer/larger figure
+                          # found), used the safer/larger figure -- memory
+                          # wasn't the failure mode, left as-is
     cpus: 4
-    partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
 
   kelvin_read_phyloflash:  # phyloflash__run
