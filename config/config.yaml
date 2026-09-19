@@ -223,7 +223,7 @@ resource_sets:
     mem_mb: 16000
     cpus: 1
     partition: "k2-lowpri,k2-bioinf"
-    nvme: "nvme:10"
+    nvme: "nvme:0"
 
   # --- read_annotate tools (2026-09-19) ---
   # First real attempt at read_annotate for this fork. Unlike preprocess,
@@ -253,8 +253,19 @@ resource_sets:
     mem_mb: 210000        # real DB size (189GB) + ~10% overhead
     cpus: 16              # matches the throughput figure's own thread count
     partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
-    nvme: "nvme:200"      # fallback path if shm isn't used (KRAKEN2NVME) --
-                          # roughly DB-size, same reasoning as mem_mb
+    nvme: "nvme:0"  # was nvme:200 -- Kelvin2 has no real "nvme" gres type
+                          # (`scontrol show config`: GresTypes = gpu only;
+                          # every node in these partitions shows GRES=(null)).
+                          # Found for real 2026-09-19: any nonzero nvme:N
+                          # value fails real sbatch submission outright
+                          # ("Invalid generic resource (gres) specification").
+                          # nvme:0 is accepted only because requesting zero
+                          # of anything skips validation. See the same fix on
+                          # kelvin_magscot_small; medium/medium_nvme/full_node/
+                          # highmem/large_nvme/longrun/highmem_longrun still
+                          # carry nonzero nvme values and are equally broken
+                          # for real submission -- not fixed here (shared,
+                          # wider blast radius), flagged as a real follow-up.
 
   kelvin_read_diamond:  # diamond__assign -- real DB (cazy) only 1.8GB
     runtime: 90           # small target DB, single query pass; not directly
@@ -264,7 +275,7 @@ resource_sets:
                           # default -b2.0 -> ~12GB + margin
     cpus: 4
     partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
-    nvme: "nvme:10"        # matches old medium_nvme tier's nvme allocation
+    nvme: "nvme:0"  # was nvme:10 -- no real nvme gres on Kelvin2, see kelvin_read_kraken2
 
   kelvin_read_humann:  # humann__run -- NOT a hipri candidate, real evidence
     runtime: 900          # community-reported: 52.5+/-19.2 CPU-hours average
@@ -302,7 +313,7 @@ resource_sets:
                           # internal assembly step
     cpus: 4
     partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
-    nvme: "nvme:10"        # matches old medium_nvme tier's nvme allocation
+    nvme: "nvme:0"  # was nvme:10 -- no real nvme gres on Kelvin2, see kelvin_read_kraken2
 
   kelvin_read_singlem:  # singlem__pipe
     runtime: 120           # not directly benchmarked; docs emphasize
@@ -313,7 +324,7 @@ resource_sets:
                           # light-usage figure rather than trusting it as-is
     cpus: 4
     partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
-    nvme: "nvme:10"        # matches old medium_nvme tier's nvme allocation
+    nvme: "nvme:0"  # was nvme:10 -- no real nvme gres on Kelvin2, see kelvin_read_kraken2
 
   kelvin_read_nonpareil:  # nonpareil__run -- NOT a hipri candidate
     runtime: 300           # docs: runtime scales LINEARLY with dataset size,
