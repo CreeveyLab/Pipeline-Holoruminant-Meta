@@ -176,6 +176,54 @@ resource_sets:
     cpus: 1
     partition: "k2-medpri,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
+
+  # Same bug, same fix pattern, caught before ever running for real this time:
+  # a dry run against the "assemble"/"mag_annotate"/"quantify" targets
+  # (2026-09-18) raised, immediately at DAG-build time rather than silently at
+  # submission:
+  #   WorkflowError: Error grouping resources in group 'magscot_37131':
+  #   Resource slurm_partition is a string but not all group jobs require the
+  #   same value. Observed values: {'k2-lowpri,k2-bioinf',
+  #   'k2-medpri,k2-lowpri,k2-bioinf'}.
+  # The "magscot_{assembly_id}" group (assemble/magscot.smk, 8 rules) mixes
+  # `medium`/`medium_nvme` (prodigal, hmmsearch_pfam, hmmsearch_tigr --
+  # partition "k2-lowpri,k2-bioinf", deliberately excluding k2-medpri since
+  # their own 4000min runtime already exceeds its cap on its own) with
+  # `small` (join_hmms, merge_contig_to_bin, run, reformat, rename --
+  # partition "k2-medpri,k2-lowpri,k2-bioinf"). A group job is one sbatch
+  # submission needing one partition list; Snakemake has no way to combine
+  # two different partition strings across group members, so it refuses
+  # outright rather than guessing. Explicit choice: keep all 8 rules in one
+  # group (not splitting the short ones out to submit individually, which
+  # would reintroduce the exact per-rule queue-wait problem this whole fork
+  # exists to fix) by giving these 5 rules their own tier that matches
+  # medium/medium_nvme's partition instead. `small` itself is untouched (~35
+  # other, ungrouped rules use it, where k2-medpri genuinely helps).
+  #
+  # NOTE: runtime/mem/cpu values below are still the generic, un-recalibrated
+  # `small` defaults -- no real benchmark data exists yet for magscot (only
+  # `preprocess` has been calibrated with real Kelvin numbers so far). This
+  # fixes the structural partition conflict; revisit the actual runtime/mem
+  # values with real data once magscot has been run for real.
+  #
+  # Same conflict, second resource: the dry run above got past slurm_partition
+  # only to immediately hit the identical failure on `gres` --
+  # `assemble__magscot__prodigal` uses `medium_nvme` (nvme:10) while the rest
+  # of the group used `nvme:0`. Fix: prodigal's real NVMe need is presumably
+  # genuine (that's why medium_nvme exists as a distinct tier from medium in
+  # the first place), so match it here rather than drop it -- this
+  # over-reserves NVMe scratch for the 4 rules in this tier that likely don't
+  # need it, a real inefficiency, not a correctness problem; revisit once
+  # magscot has real benchmark data. hmmsearch_pfam/hmmsearch_tigr's fix is
+  # simpler: they only need medium's numbers, so just point them at the
+  # already-existing medium_nvme instead of medium (see escalation.yaml) --
+  # no new tier needed there.
+  kelvin_magscot_small:  # join_hmms, merge_contig_to_bin, run, reformat, rename
+    runtime: 300
+    mem_mb: 16000
+    cpus: 1
+    partition: "k2-lowpri,k2-bioinf"
+    nvme: "nvme:10"
     
  # The previous node is used for setting up a ramdisc for time-critical tasks. Make sure, that the allocation ensures that the entire node is
  # requested for the job so that there won't be other users on the same node while the job runs. Their jobs might get affected by the
