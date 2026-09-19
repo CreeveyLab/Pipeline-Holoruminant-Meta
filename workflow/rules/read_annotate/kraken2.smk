@@ -108,7 +108,7 @@ rule read_annotate__kraken2__assign:
             if [ "$DB_DST" != "$DB_SRC" ]; then
                 echo "Copy input database to $DB_DST" 2>> {log}.{resources.attempt} 1>&2
                 mkdir -p "$DB_DST"
-                rsync --archive --recursive --times "$DB_SRC"/*.k2d "$DB_DST" 2>> {log}.{resources.attempt}
+                rsync --recursive --times "$DB_SRC"/*.k2d "$DB_DST" 2>> {log}.{resources.attempt}
             fi
         else
             echo "Skipping DB copy — using database in place" 2>> {log}.{resources.attempt} 1>&2
