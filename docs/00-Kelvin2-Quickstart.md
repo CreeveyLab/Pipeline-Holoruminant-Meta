@@ -67,7 +67,8 @@ From inside your project directory:
 
 ```bash
 bash run_Kelvin.sh                                  # run everything
-bash run_Kelvin.sh <specific/output/path>           # run only what's needed for one target
+bash run_Kelvin.sh mag_annotate                     # run only one module (grouped rules run in groups)
+bash run_Kelvin.sh <specific/output/path>           # run only what's needed for one target file
 ```
 
 **You don't need `nohup`, `tmux`, or `screen`.** For a real (non-dry-run) launch,
@@ -110,6 +111,12 @@ bash run_Kelvin.sh read_annotate    # every read-level profiling tool, every sam
 bash run_Kelvin.sh mag_annotate
 bash run_Kelvin.sh quantify
 ```
+
+**A whole tool within a module isn't necessarily one unambiguous name** —
+e.g. "bowtie2" alone is genuinely six different rules across three modules.
+Target names must match exactly; there's no fuzzy matching. See
+[02-Kelvin2-Rule-Reference.md](02-Kelvin2-Rule-Reference.md) for the full
+module → tool → exact rule name table.
 
 For a specific file, sample, or intermediate step (rather than "everything
 in a module"), there are two easy ways to find the real path without
