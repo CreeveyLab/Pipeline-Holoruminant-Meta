@@ -29,6 +29,10 @@ rule assemble__metaspades__run:
         forwards=aggregate_forwards_for_metaspades,
         reverses=aggregate_reverses_for_metaspades,
         assembly_id=lambda w: w.assembly_id,
+        # SPAdes's --memory flag expects Gb, but resources.mem_mb (Snakemake's
+        # standard resource key, also what SLURM submission uses) is in Mb --
+        # converted once here, by name, rather than inline in the shell command.
+        mem_gb=lambda wildcards, resources: resources.mem_mb // 1000,
     shell:
         """
         # Concatenate forward reads into a single file
@@ -39,7 +43,7 @@ rule assemble__metaspades__run:
         
         metaspades.py \
             -t {threads} \
-            --memory {resources.mem_mb} \
+            --memory {params.mem_gb} \
             -k {params.kmer_size} \
             {params.additional_options} \
             -1 {output.concatenated_forwards} \
