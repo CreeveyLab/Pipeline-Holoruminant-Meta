@@ -29,13 +29,19 @@ This covers adapter/quality trimming (`fastp`) and host-read decontamination
 (each host's mapped reads are removed before the next host is checked). All
 of this, for one sample/library, is bundled into **one** SLURM job.
 
-Target it directly, or just let it run as part of anything downstream that
-depends on it:
+Run it for every sample in your project with the module's own rule name —
+no need to know the output path at all:
 
 ```bash
-bash run_Kelvin.sh results/preprocess/bowtie2/decontaminated_reads/SAMPLE.lib1_1.fq.gz \
-                    results/preprocess/bowtie2/decontaminated_reads/SAMPLE.lib1_2.fq.gz
+bash run_Kelvin.sh preprocess
 ```
+
+(If you only want one specific sample/library rather than the whole
+project — say, to test on one sample before committing to the rest — target
+its real output file instead:
+`results/preprocess/bowtie2/decontaminated_reads/SAMPLE.lib1_{1,2}.fq.gz`.
+See [docs/00-Kelvin2-Quickstart.md § Finding the right target to run](00-Kelvin2-Quickstart.md#5-finding-the-right-target-to-run)
+for how to find paths like this yourself.)
 
 **What to expect in `squeue`**: one job, not one per host or per step — its
 name will be a UUID, not something human-readable, but you can confirm it's
