@@ -300,10 +300,12 @@ resource_sets:
     # Real evidence beats my earlier guess: job 9936992 (real run, sample
     # 37131, 2026-09-19) hit TIMEOUT at exactly 120min, the runtime this
     # tier originally requested. The "typically fast" assumption was wrong
-    # for this sample. No real upper bound known yet -- bumped generously
-    # and pulled off k2-hipri (confirmed NOT a fits-under-180min candidate)
-    # rather than guess a second time; revisit once a real completion time
-    # is known.
+    # for this sample. Bumped to 400min and pulled off k2-hipri (confirmed
+    # NOT a fits-under-180min candidate); the relaunch (job 9937377) then
+    # genuinely COMPLETED in 3h25m10s (205min) -- real number now known,
+    # comfortably under 400min. Could be tightened closer to ~250min with
+    # real headroom once a second sample confirms this isn't a fluke;
+    # left generous for now.
     runtime: 400
     mem_mb: 25000          # docs: 15GB (v4.0) vs 25GB (v4.1) minimum; exact
                           # version unconfirmed (no dedicated container tag
@@ -331,15 +333,20 @@ resource_sets:
     nvme: "nvme:0"  # was nvme:10 -- no real nvme gres on Kelvin2, see kelvin_read_kraken2
 
   kelvin_read_singlem:  # singlem__pipe
-    runtime: 120           # not directly benchmarked; docs emphasize
-                          # lightweight resource use, implying fast operation
-    mem_mb: 8000           # docs: "<4GB except in very large (>100Gbp)
-                          # metagenomes" -- our real sample is ~89Gbp, right
-                          # at that edge, so padded well above the stated
-                          # light-usage figure rather than trusting it as-is
+    # Real evidence correction (2026-09-19): job 9937378 hit TIMEOUT at
+    # exactly 120min -- same pattern as metaphlan's original underestimate.
+    # Our real sample (~89Gbp) sits right at the edge of SingleM's own
+    # documented "light usage" threshold (>100Gbp), and evidently that
+    # edge case runs longer than the docs' light-usage framing implied.
+    # Bumped well past what metaphlan (a comparable marker/alignment-based
+    # tool) actually needed for real (205min) rather than guess again;
+    # dropped from hipri given two of these "should be fast" tools have
+    # now both underrun their real time on this sample.
+    runtime: 300
+    mem_mb: 8000           # memory wasn't implicated in the failure, left as-is
     cpus: 4
-    partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
-    nvme: "nvme:0"  # was nvme:10 -- no real nvme gres on Kelvin2, see kelvin_read_kraken2
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"  # no real nvme gres on Kelvin2, see kelvin_read_kraken2
 
   kelvin_read_nonpareil:  # nonpareil__run -- NOT a hipri candidate
     runtime: 300           # docs: runtime scales LINEARLY with dataset size,
