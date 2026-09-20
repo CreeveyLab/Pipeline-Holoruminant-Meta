@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Pre-flight safety gate for (re)launching Snakemake against a Kelvin2
-# project directory. Addresses two real, confirmed incidents from running
-# this pipeline for real (see the project's CLAUDE.md, Section 4):
+# project directory. Addresses two confirmed incidents from running this
+# pipeline for real:
 #
 #   - SIGTERM does not reliably stop a Snakemake orchestrator process --
 #     confirmed 3 separate times, once with two stale survivors alive

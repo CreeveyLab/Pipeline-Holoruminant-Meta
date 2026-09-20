@@ -2,14 +2,15 @@
 ##
 ## File configuration configuration
 
-pipeline_folder: "/users/fischerd/git/Snakebite-Holoruminant-MetaG/"
+# Overwritten automatically by workflow/scripts/bootstrap_project.sh when
+# scaffolding a new project -- edit only if setting up a project by hand.
+pipeline_folder: "/users/<your-username>/holor-pipeline-fork/"
 
 features-file: "config/features.yaml"
 params-file: "config/params.yaml"
 docker-file: "config/.docker.yml"
 sample-file: "config/samples.tsv"
 dram-config: "config/dram_config.txt"
-proteinortho-config: "config/proteinortho_config.txt"
 phylophlan-config: "config/phylophlan/supertree_aa.cfg"
 
 tmp_storage: "$TMP"
@@ -152,15 +153,15 @@ resource_sets:
   # (180 fastp + 4x180 map + 4x300 extract + 300 finalize = 2400min) it
   # exceeded k2-medpri's real 1440min (24h) cap, and SLURM rejects the
   # *entire* multi-partition submission if --time exceeds ANY listed
-  # partition's cap (the exact bug this whole fork exists to fix, Section 1
-  # of CLAUDE.md -- recurring one layer up at the group level). Confirmed via
+  # partition's cap (the same root bug this whole fork exists to fix,
+  # recurring one layer up at the group level). Confirmed via
   # `sbatch --parsable ... -t 2400 -p k2-medpri,k2-lowpri,k2-bioinf` run by
   # hand: "Requested time limit is invalid (missing or exceeds some limit)".
   # `small` is shared by ~35 other, ungrouped rules where this doesn't apply
   # (each submits individually) -- do not edit it; these two dedicated tiers
   # exist so the grouped rules can be sized tightly without touching it.
   kelvin_preprocess_extract:  # bowtie2__extract_nonhost_run (grouped, x4 hosts)
-    runtime: 100          # real max 51min (CLAUDE.md Section 2) -- ~2x headroom
+    runtime: 100          # real max 51min -- ~2x headroom
     mem_mb: 16000          # unchanged from `small`, not the bottleneck here
     cpus: 1
     partition: "k2-medpri,k2-lowpri,k2-bioinf"

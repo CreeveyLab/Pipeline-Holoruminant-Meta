@@ -42,7 +42,7 @@ set -euo pipefail
 #    read_annotate__sylph and contig_annotate__diamond/hmmer respectively).
 #    Worked around by targeting every module's umbrella rule EXCEPT those
 #    still-missing branches individually. Revisit this target list once
-#    those databases are actually populated (see CLAUDE.md).
+#    those databases are actually populated.
 #
 # Usage: run from a real, already-bootstrapped project directory:
 #   /path/to/holor-pipeline-fork/flowchart/generate_rulegraph.sh

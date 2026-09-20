@@ -5,10 +5,9 @@ set -euo pipefail
 # config/, points pipeline_folder at this fork, wires up the central
 # resources store, detects samples (or reuses an existing samples.tsv),
 # generates a run wrapper, and self-checks with a dry run before declaring
-# success. Automates what was previously done by hand (see the project's
-# CLAUDE.md, Section 5b / 6 step 8) -- mirrors the manual steps documented in
-# docs/02-Installation.md / docs/03-Setup.md, adapted for Kelvin and this
-# fork's now-central resource store.
+# success. Automates what was previously done by hand, mirroring the manual
+# steps documented in docs/02-Installation.md / docs/03-Setup.md, adapted
+# for Kelvin and this fork's central resource store.
 #
 # Usage:
 #   bootstrap_project.sh <project_dir> \
@@ -124,7 +123,7 @@ else
 fi
 
 # Central resources store (read-only reference genomes + tool databases,
-# shared across every project -- see CLAUDE.md Section 6 step 1).
+# shared across every project).
 ln -s "$RESOURCES_PATH" "$PROJECT_DIR/resources"
 
 # Run wrapper, generated from this fork's own validated run_Kelvin.sh

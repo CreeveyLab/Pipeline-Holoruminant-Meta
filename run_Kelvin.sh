@@ -5,9 +5,9 @@
 # Modeled on run_Snakebite-Holoruminant-MetaG.sh (this repo's generic
 # template) plus a validated Apptainer/Singularity bind-mount list carried
 # over from an earlier, locally-installed Kelvin run of this pipeline --
-# that bind list is real, hard-won knowledge (see CLAUDE.md incident #4:
-# a missing bind path surfaces as a misleading "filesystem latency" error, not
-# an obvious permissions error), reused here rather than rediscovered.
+# that bind list is hard-won knowledge -- a missing bind path surfaces as a
+# misleading "filesystem latency" error, not an obvious permissions error --
+# reused here rather than rediscovered.
 #
 # No --retries/--restart-times override here: every resource-consuming rule
 # in workflow/rules/ already declares its own `retries: len(get_escalation_order(...))`,
@@ -88,10 +88,10 @@ for arg in "$@"; do
 done
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
-    # Pre-flight safety gate (CLAUDE.md Section 4 incidents #2/#6): refuses to
-    # launch if a previous generation's SLURM jobs or orchestrator process are
-    # still alive for this project -- see workflow/scripts/kelvin_launch_guard.sh
-    # for what it actually checks and why "kill" alone isn't a safe signal.
+    # Pre-flight safety gate: refuses to launch if a previous generation's
+    # SLURM jobs or orchestrator process are still alive for this project --
+    # see workflow/scripts/kelvin_launch_guard.sh for what it actually checks
+    # and why "kill" alone isn't a safe signal.
     if ! "$pipelineFolder/workflow/scripts/kelvin_launch_guard.sh" "$projectFolder"; then
         echo ""
         echo "Not launching a second orchestrator -- checking the active run's status instead:"
