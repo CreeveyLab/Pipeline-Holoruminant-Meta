@@ -124,7 +124,14 @@ per-step queue-wait): a few things behave differently for these —
   (`kraken2`, `diamond`, `humann`, `metaphlan`, `phyloflash`, `singlem`,
   `nonpareil`) has been validated against a real dataset.
 
-## 7. Getting help
+## 7. Worked example: raw reads to MAGs
+
+For a concrete, step-by-step walkthrough of the most common path through
+this pipeline — including exactly what to expect from both grouped rules
+(`preprocess` and `assemble/magscot`) in practice — see
+[docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md](01-Kelvin2-Walkthrough-ReadsToMAGs.md).
+
+## 8. Getting help
 
 Check `docs/10-Troubleshooting.md` for general pipeline issues. For
 Kelvin2-specific problems (SLURM submission errors, resource tiers,

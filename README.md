@@ -24,6 +24,10 @@ run individual tools, giving full flexibility on how to use and run the pipeline
 cloning, bootstrapping a project, launching, how the resource-tier system works, and known
 limitations. Start there; this section is just the condensed version.
 
+**Worked example, raw reads to MAGs: [docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md](docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md)**
+— a concrete, step-by-step run through preprocessing, assembly, binning, and dereplication,
+including exactly what to expect from the two grouped rules along the way.
+
 ```bash
 # 1. Clone your own copy (see the quickstart for why "your own")
 git clone git@github.com:CreeveyLab/Pipeline-Holoruminant-Meta.git
