@@ -1,12 +1,23 @@
-# Walkthrough: raw reads to MAGs on Kelvin2
+# Walkthrough: raw reads to annotated, taxonomically classified, quality-checked MAGs on Kelvin2
 
 A worked, step-by-step example of the most common path through this pipeline —
-raw sequencing reads in, a dereplicated set of metagenome-assembled genomes
-(MAGs) out. This intentionally stops before `read_annotate` (read-level
-taxonomic/functional profiling) — that module runs independently of
-everything below and isn't needed to get to MAGs; see
+raw sequencing reads in, annotated, taxonomically classified, quality-checked
+metagenome-assembled genomes (MAGs) out. This intentionally stops before
+`read_annotate` (read-level taxonomic/functional profiling) and `quantify`
+(relative MAG abundance across samples) — both run independently of
+everything below and aren't needed to get here; see
 [docs/00-Kelvin2-Quickstart.md](00-Kelvin2-Quickstart.md) for the general
 setup and the resource-tier/grouped-rule concepts this walkthrough assumes.
+
+**A real caveat, upfront**: unlike `preprocess` and `read_annotate`, nothing
+from `assemble` onward has actually been run to completion with real data in
+this fork yet (as of this writing) — no real MAGs have been produced.
+`assemble`'s and `mag_annotate`'s resource tiers are still the generic,
+un-recalibrated defaults, not real-benchmark-based like `preprocess`'s. The
+grouped-rule mechanics described below (magscot specifically) have been
+verified for real, but the tools themselves haven't been. Treat this as a
+map of the real path, not a guarantee every step's resource tier is already
+right for your data.
 
 This assumes you already have a bootstrapped project (`bootstrap_project.sh`,
 covered in the quickstart) with real reads in place. Throughout, `SAMPLE` is
@@ -15,7 +26,7 @@ a stand-in for your own sample ID as it appears in `config/samples.tsv`.
 ## The path, in order
 
 ```
-raw reads  →  preprocess (grouped)  →  assemble  →  bin  →  refine (grouped)  →  dereplicate  →  MAGs
+raw reads → preprocess (grouped) → assemble → bin → refine (grouped) → dereplicate → MAGs → annotate/classify/QC
 ```
 
 Two of these steps are **grouped**: several small, sequential rules bundled
@@ -152,15 +163,80 @@ showing every job across all of Steps 2-5 at once, not just dRep's.
 - `results/assemble/drep/dereplicated_genomes.fa.gz` — all final MAGs, concatenated.
 - `results/assemble/drep/dereplicated_genomes/` — the same genomes as individual FASTA files, one per MAG.
 
-## What's next
+## Step 6: MAG annotation, taxonomy, and quality control
 
-This is real, usable output — but it's not annotated or quantified yet.
-`mag_annotate` (taxonomy, functional annotation) and `quantify` (relative
-abundance of each MAG across samples) both consume this MAG set as their
-starting point. Neither is covered by this walkthrough; check their
-respective rule files under `workflow/rules/` for what they need.
+Everything from here on consumes the dereplicated MAG set from Step 5. Unlike
+Steps 1-5, this module (`mag_annotate`) is a collection of independent tools —
+like `read_annotate`, not a linear pipeline — so there's no single "grouped
+chain" here; each tool is its own separate job. Organised by what you asked
+for:
 
-## Not covered here: `read_annotate`
+**Taxonomy** — `GTDB-Tk` classifies each MAG:
+
+```bash
+bash run_Kelvin.sh results/mag_annotate/gtdbtk/gtdbtk.summary.tsv
+```
+
+**Quality control** — `CheckM2` estimates genome completeness/contamination
+per MAG; `QUAST` reports assembly-quality statistics across the MAG set:
+
+```bash
+bash run_Kelvin.sh mag_annotate__checkm2
+bash run_Kelvin.sh mag_annotate__quast
+```
+
+**Functional annotation** — `DRAM`, `eggNOG-mapper`, `CAMPER`, `Bakta`,
+`ProteinOrtho`, and `PhyloPhlAn` all run against the MAG set too. One real
+cross-tool dependency worth knowing: `DRAM`'s own annotation rule requires
+GTDB-Tk's taxonomy output as an input, not just the MAG set — so running
+`DRAM` on its own still triggers a real GTDB-Tk classification first if you
+haven't run it already; this is normal, not a mistake in what you targeted.
+
+```bash
+bash run_Kelvin.sh mag_annotate__dram_mags
+bash run_Kelvin.sh mag_annotate__eggnog
+bash run_Kelvin.sh mag_annotate__camper
+bash run_Kelvin.sh mag_annotate__bakta_mags
+bash run_Kelvin.sh mag_annotate__proteinortho
+bash run_Kelvin.sh mag_annotate__phylophlan
+```
+
+Or, all of the above at once — every tool in this module, for every MAG:
+
+```bash
+bash run_Kelvin.sh mag_annotate
+```
+
+**Checking progress**: `bash check_progress_kelvin.sh`, same as every other
+step — with this many independent tools potentially running at once, this is
+the easiest way to see everything together rather than checking each one.
+
+**Output**: `results/mag_annotate/`, one subfolder per tool (`gtdbtk/`,
+`checkm2/`, `quast/`, `dram/`, `eggnog/`, `camper/`, `bakta_mags/`,
+`proteinortho/`, `phylophlan/`).
+
+## Run everything in one command
+
+Every step above — preprocessing through MAG annotation/taxonomy/quality —
+is really just one dependency chain. Targeting the furthest-downstream output
+pulls in everything upstream of it automatically:
+
+```bash
+bash run_Kelvin.sh mag_annotate
+```
+
+**Does grouping still apply when you invoke it this way, rather than one step
+at a time?** Yes — confirmed directly, not assumed: a real dry run
+(`bash run_Kelvin.sh -n mag_annotate`) shows `Group job magscot_37131`
+appearing in the dispatch exactly as it does when `assemble` is targeted
+directly, even though the actual target here is several steps further
+downstream. Grouping is a property of the rule itself, not of how you invoke
+it — Snakemake builds the full dependency graph backward from whatever
+target you give it, and any grouped rule that ends up in that graph stays
+grouped, whether it's the thing you asked for directly or just something
+upstream of it. The same applies to `preprocess`'s group.
+
+## Not covered here: `read_annotate` and `quantify`
 
 Read-level profiling (`kraken2`, `diamond`, `humann`, `metaphlan`, `phyloflash`,
 `singlem`, `nonpareil`) runs entirely independently of everything above — it
@@ -168,3 +244,7 @@ only needs Step 1's decontaminated reads, not anything from assembly onward.
 It's deliberately left out of this walkthrough while its own resource tiers
 are still being actively tuned; see `config/escalation.yaml`'s `read_annotate__*`
 entries and their comments for the current state.
+
+`quantify` (relative abundance of each MAG across samples) consumes Step 6's
+output but isn't covered here either; check `workflow/rules/quantify/` for
+what it needs.
