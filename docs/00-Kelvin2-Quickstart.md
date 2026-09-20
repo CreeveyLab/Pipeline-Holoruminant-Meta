@@ -70,11 +70,31 @@ bash run_Kelvin.sh                                  # run everything
 bash run_Kelvin.sh <specific/output/path>           # run only what's needed for one target
 ```
 
-Before doing anything else, `run_Kelvin.sh` runs a safety check
-(`kelvin_launch_guard.sh`) that refuses to launch if a previous run for this
-same project is still active — either real SLURM jobs still queued/running,
-or a Snakemake orchestrator process that didn't fully exit. If it blocks
-you, follow what it prints; don't just re-run past it.
+**You don't need `nohup`, `tmux`, or `screen`.** For a real (non-dry-run) launch,
+`run_Kelvin.sh` automatically backgrounds and detaches the orchestrator itself,
+so it survives you logging out, and returns control to your shell immediately
+— it does not sit there printing output while the pipeline runs. Check on it
+any time with:
+
+```bash
+bash check_progress_kelvin.sh
+```
+
+This reports the orchestrator's live status, every real SLURM job it has
+submitted so far for this project, and recent progress from its log — all in
+one place, whether you check it a minute after launching or after logging back
+in the next day.
+
+(Dry runs, `-n`/`--dry-run`, are the exception — those run directly in the
+foreground, since they're fast, read-only, and you'll want to see the output
+immediately.)
+
+Before a real launch, `run_Kelvin.sh` also runs a safety check
+(`kelvin_launch_guard.sh`) that refuses to start a second orchestrator if a
+previous run for this same project is still active — either real SLURM jobs
+still queued/running, or a Snakemake orchestrator process that didn't fully
+exit. If it finds one, it runs `check_progress_kelvin.sh` for you automatically
+instead of launching a duplicate.
 
 ## 5. Finding the right target to run
 

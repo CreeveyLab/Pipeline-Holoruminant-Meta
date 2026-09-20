@@ -46,7 +46,10 @@ for how to find paths like this yourself.)
 **What to expect in `squeue`**: one job, not one per host or per step — its
 name will be a UUID, not something human-readable, but you can confirm it's
 the right one by matching the working directory (`squeue -u $USER -o "%.12i %.10T %Z"`)
-against your project directory.
+against your project directory. Easier: `bash check_progress_kelvin.sh` shows
+this (and the orchestrator's own status, and recent log progress) without
+needing to match anything up yourself — this step alone can run for many
+hours, so this is worth checking in on rather than watching the terminal.
 
 **Real timing, for reference**: on a real ~350-million-read paired library,
 this full cascade (4 hosts × build/map/extract, plus `fastp`) took around
