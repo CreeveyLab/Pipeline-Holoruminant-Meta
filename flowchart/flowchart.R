@@ -1,3 +1,13 @@
+# NOTE (2026-09-20): flowchart.png is no longer generated from this script.
+# It's now generated directly from the real, current workflow/rules/ via
+# Snakemake's own --rulegraph -- see generate_rulegraph.sh in this same
+# directory. This script is kept for reference (its friendlier module/
+# tool-version-labeled style) but every R env checked on Kelvin2 is missing
+# shared libs this needs (libicuuc/libicui18n/libreadline/libbz2/libiconv),
+# so it doesn't currently run here. If you get a working R+DiagrammeR
+# env, update this script's node/edge lists to match any rules that have
+# changed since, rather than assuming it's still accurate as-is.
+
 library("DiagrammeR")
 library("DiagrammeRsvg")
 library("rsvg")

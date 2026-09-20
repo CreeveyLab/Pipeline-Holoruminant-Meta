@@ -18,7 +18,13 @@ This makes it straight forward and as user-friendly as it can get.
 The pipeline is organised in modules, which can run one-by-one. Further, the user can also choose to
 run individual tools, giving full flexibility on how to use and run the pipeline.
 
-![Flow diagram of the pipeline](https://github.com/fischuu/Pipeline-Holoruminant-Meta/blob/main/flowchart/flowchart.png?raw=true)
+![Flow diagram of the pipeline](flowchart/flowchart.png)
+
+This diagram is the real rule-dependency graph of this fork's current `workflow/rules/`,
+generated with Snakemake's own `--rulegraph` (see `flowchart/generate_rulegraph.sh`) rather
+than hand-drawn, so it can't drift out of sync with the actual rules. It's more granular
+(raw rule names) than a hand-maintained module diagram would be — see that script's header
+comment for how to regenerate it and the caveats involved.
 
 # Running this fork on Kelvin2
 
