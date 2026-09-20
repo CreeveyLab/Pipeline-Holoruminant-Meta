@@ -76,7 +76,34 @@ same project is still active — either real SLURM jobs still queued/running,
 or a Snakemake orchestrator process that didn't fully exit. If it blocks
 you, follow what it prints; don't just re-run past it.
 
-## 5. Understanding the resource-tier system
+## 5. Finding the right target to run
+
+`bash run_Kelvin.sh <target>` accepts anything Snakemake accepts as a
+target: a real output file path, or a **rule name**. You don't need to
+know the folder structure to run a whole module — every module has a
+top-level rule named after itself, so these all work directly:
+
+```bash
+bash run_Kelvin.sh preprocess       # every sample's preprocessing
+bash run_Kelvin.sh assemble         # assembly through dereplication, every sample
+bash run_Kelvin.sh read_annotate    # every read-level profiling tool, every sample
+bash run_Kelvin.sh mag_annotate
+bash run_Kelvin.sh quantify
+```
+
+For a specific file, sample, or intermediate step (rather than "everything
+in a module"), there are two easy ways to find the real path without
+reading rule files by hand:
+
+- **`workflow/rules/folders.smk`** — a single file mapping every module's
+  output folders to short names (e.g. `DREP = ASSEMBLE / "drep/"`,
+  `PRE_BOWTIE2 = PRE / "bowtie2"`). It's the fastest way to see the real
+  on-disk layout in one place.
+- **A dry run** (`bash run_Kelvin.sh -n <module-name>`) prints every rule
+  it would run, including the real `input:`/`output:` file paths for each
+  — useful even if you never open a single `.smk` file.
+
+## 6. Understanding the resource-tier system
 
 Every rule in the pipeline is assigned a named resource tier (`config/escalation.yaml`
 maps rules to tiers, `config/config.yaml`'s `resource_sets:` defines what each
@@ -106,7 +133,7 @@ per-step queue-wait): a few things behave differently for these —
   should be sized generously up front on a single tier, not rely on
   escalation.
 
-## 6. Known limitations
+## 7. Known limitations
 
 - **Multi-user use is not yet fully validated.** The shared stores
   (resources, containers) are architected for concurrent use by design, but
@@ -124,14 +151,14 @@ per-step queue-wait): a few things behave differently for these —
   (`kraken2`, `diamond`, `humann`, `metaphlan`, `phyloflash`, `singlem`,
   `nonpareil`) has been validated against a real dataset.
 
-## 7. Worked example: raw reads to MAGs
+## 8. Worked example: raw reads to MAGs
 
 For a concrete, step-by-step walkthrough of the most common path through
 this pipeline — including exactly what to expect from both grouped rules
 (`preprocess` and `assemble/magscot`) in practice — see
 [docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md](01-Kelvin2-Walkthrough-ReadsToMAGs.md).
 
-## 8. Getting help
+## 9. Getting help
 
 Check `docs/10-Troubleshooting.md` for general pipeline issues. For
 Kelvin2-specific problems (SLURM submission errors, resource tiers,
