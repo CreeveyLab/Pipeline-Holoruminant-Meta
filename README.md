@@ -1,4 +1,6 @@
 > **This is a modified fork**, maintained for running this pipeline on **Kelvin2, the HPC cluster at Queen's University Belfast**. It diverges from the upstream [`fischuu/Snakebite-Holoruminant-MetaG`](https://github.com/fischuu/Snakebite-Holoruminant-MetaG) pipeline (and its own upstream, [`3d-omics/mg_assembly`](https://github.com/3d-omics/mg_assembly)) with a Kelvin2-specific SLURM profile (`config/profiles/Kelvin/`), recalibrated per-rule resource tiers, a project bootstrap script (`workflow/scripts/bootstrap_project.sh`), and a shared, group-writable container image cache. If you're not running on Kelvin2 at QUB, the upstream repository is very likely what you want instead.
+>
+> **New here? Start with [docs/00-Kelvin2-Quickstart.md](docs/00-Kelvin2-Quickstart.md)** (setup) **and [docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md](docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md)** (a worked, step-by-step example: raw reads to MAGs).
 
 # Overview
 
