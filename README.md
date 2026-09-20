@@ -18,9 +18,35 @@ run individual tools, giving full flexibility on how to use and run the pipeline
 
 ![Flow diagram of the pipeline](https://github.com/fischuu/Pipeline-Holoruminant-Meta/blob/main/flowchart/flowchart.png?raw=true)
 
-# Installation, Setup and running the pipeline
+# Running this fork on Kelvin2
 
-For a step-by-step tutorial on how to install the pipeline and all pre-compiled databases, please see
+**Full walkthrough: [docs/00-Kelvin2-Quickstart.md](docs/00-Kelvin2-Quickstart.md)** — prerequisites,
+cloning, bootstrapping a project, launching, how the resource-tier system works, and known
+limitations. Start there; this section is just the condensed version.
+
+```bash
+# 1. Clone your own copy (see the quickstart for why "your own")
+git clone git@github.com:CreeveyLab/Pipeline-Holoruminant-Meta.git
+
+# 2. Scaffold a new project from your real reads
+Pipeline-Holoruminant-Meta/workflow/scripts/bootstrap_project.sh <project_dir> \
+  --reads-dir <directory with your *_R1_*/*_R2_*.fastq.gz files>
+
+# 3. Launch
+cd <project_dir>
+bash run_Kelvin.sh
+```
+
+`bootstrap_project.sh` wires your project up to the shared, central reference-genome/database
+store and container cache automatically — you shouldn't need to download or configure either
+yourself.
+
+# Installation, Setup and running the pipeline (upstream, generic)
+
+The guides below are the **original, generic** upstream documentation — useful for understanding
+the pipeline's modules and options in general, but they don't cover anything Kelvin2-specific
+(the Kelvin SLURM profile, `bootstrap_project.sh`, resource tiers, or the shared stores this fork
+sets up for you). For running on Kelvin2, use the quickstart above instead.
 
 Guide to install the pipeline: [Installation](https://github.com/fischuu/Pipeline-Holoruminant-Meta/blob/main/docs/02-Installation.md)
 
