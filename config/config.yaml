@@ -225,6 +225,30 @@ resource_sets:
     partition: "k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
 
+  # Regression found and fixed 2026-09-20: the gres fix above (nvme:10 ->
+  # nvme:0, commit b260899 -- Kelvin2 has no real "nvme" gres type at all)
+  # changed kelvin_magscot_small's own nvme value but left prodigal/
+  # hmmsearch_pfam/hmmsearch_tigr on the shared `medium_nvme` tier, which
+  # still carries nvme:10 (medium_nvme was explicitly flagged, not fixed,
+  # in that same commit -- shared by ~15 other rules, wider blast radius).
+  # That recreated the exact group-consistency conflict already fixed once
+  # before, just from the other direction: confirmed via a real dry run
+  # against `mag_annotate` (which pulls magscot in as a dependency, same
+  # as any other target that needs it) --
+  #   Error grouping resources in group 'magscot_37131': Resource gres is
+  #   a string but not all group jobs require the same value. Observed
+  #   values: {'nvme:10', 'nvme:0'}.
+  # Same fix pattern as kelvin_magscot_small itself: a dedicated tier
+  # mirroring medium_nvme's real values but with nvme:0, so every rule in
+  # this group agrees again. Do not point these three back at medium_nvme
+  # while they stay grouped.
+  kelvin_magscot_medium:  # prodigal, hmmsearch_pfam, hmmsearch_tigr
+    runtime: 4000
+    mem_mb: 160000
+    cpus: 10
+    partition: "k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
   # --- read_annotate tools (2026-09-19) ---
   # First real attempt at read_annotate for this fork. Unlike preprocess,
   # there's no real benchmark data yet -- these are evidence-based estimates

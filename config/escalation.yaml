@@ -19,9 +19,9 @@ assemble__concoct_run: large
 assemble__drep__join_genomes: medium_nvme
 assemble__drep__run: medium_nvme
 assemble__drep__separate_bins: small
-assemble__magscot__prodigal: medium_nvme
-assemble__magscot__hmmsearch_pfam: medium_nvme
-assemble__magscot__hmmsearch_tigr: medium_nvme
+assemble__magscot__prodigal: kelvin_magscot_medium
+assemble__magscot__hmmsearch_pfam: kelvin_magscot_medium
+assemble__magscot__hmmsearch_tigr: kelvin_magscot_medium
 assemble__magscot__join_hmms: kelvin_magscot_small
 assemble__magscot__merge_contig_to_bin: kelvin_magscot_small
 assemble__magscot__run: kelvin_magscot_small
