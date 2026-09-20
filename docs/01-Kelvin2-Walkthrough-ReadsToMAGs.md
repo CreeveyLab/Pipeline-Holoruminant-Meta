@@ -20,8 +20,13 @@ map of the real path, not a guarantee every step's resource tier is already
 right for your data.
 
 This assumes you already have a bootstrapped project (`bootstrap_project.sh`,
-covered in the quickstart) with real reads in place. Throughout, `SAMPLE` is
-a stand-in for your own sample ID as it appears in `config/samples.tsv`.
+covered in the quickstart) with real reads in place, and more than one sample
+in `config/samples.tsv`. Every step below leads with the command for **every
+sample in your project at once** — that's the normal way to run this pipeline.
+As an aside under each one, you'll also find the equivalent command scoped to
+just one sample (a fictional `sample1`, standing in for a real sample ID as
+it appears in your own `config/samples.tsv`) — useful for testing on one
+sample before committing to a whole project's worth of compute.
 
 ## The path, in order
 
@@ -37,22 +42,22 @@ That's the main thing this walkthrough calls out concretely as you hit it.
 
 This covers adapter/quality trimming (`fastp`) and host-read decontamination
 — for this pipeline, a cascade against every configured host genome in turn
-(each host's mapped reads are removed before the next host is checked). All
-of this, for one sample/library, is bundled into **one** SLURM job.
-
-Run it for every sample in your project with the module's own rule name —
-no need to know the output path at all:
+(each host's mapped reads are removed before the next host is checked). Each
+sample/library's whole cascade is bundled into **one** SLURM job.
 
 ```bash
 bash run_Kelvin.sh preprocess
 ```
 
-(If you only want one specific sample/library rather than the whole
-project — say, to test on one sample before committing to the rest — target
-its real output file instead:
-`results/preprocess/bowtie2/decontaminated_reads/SAMPLE.lib1_{1,2}.fq.gz`.
-See [docs/00-Kelvin2-Quickstart.md § Finding the right target to run](00-Kelvin2-Quickstart.md#5-finding-the-right-target-to-run)
-for how to find paths like this yourself.)
+*Aside — just `sample1`:*
+
+```bash
+bash run_Kelvin.sh results/preprocess/bowtie2/decontaminated_reads/sample1.lib1_1.fq.gz \
+                    results/preprocess/bowtie2/decontaminated_reads/sample1.lib1_2.fq.gz
+```
+
+(See [docs/00-Kelvin2-Quickstart.md § Finding the right target to run](00-Kelvin2-Quickstart.md#5-finding-the-right-target-to-run)
+for how to find paths like this yourself, for any step.)
 
 **Checking progress**: `bash check_progress_kelvin.sh` — shows the
 orchestrator's own status, every real job it has submitted, and recent log
@@ -69,25 +74,35 @@ this full cascade (4 hosts × build/map/extract, plus `fastp`) took around
 **12 calendar days** of mostly queue-wait, for well under a day of actual
 compute.
 
-**Output**: `results/preprocess/bowtie2/decontaminated_reads/SAMPLE.lib1_{1,2}.fq.gz`
-— your real, decontaminated reads. Everything downstream uses this.
+**Output**: `results/preprocess/bowtie2/decontaminated_reads/{sample}.lib1_{1,2}.fq.gz`,
+one pair per sample/library — your real, decontaminated reads. Everything
+downstream uses this.
 
 ## Step 2: Assembly
 
 Set which assembler to use in `config/config.yaml`'s `assembler:` key —
-`"metaspades"` (the default) or `"megahit"`. Both consume the decontaminated
-reads from Step 1 directly; you don't need to point anything at them by hand.
+`"metaspades"` (the default) or `"megahit"`. Both consume Step 1's
+decontaminated reads directly; you don't need to point anything at them by
+hand.
 
 ```bash
-bash run_Kelvin.sh results/assemble/metaspades/SAMPLE.fa.gz   # if assembler: "metaspades"
+bash run_Kelvin.sh assemble__metaspades   # if assembler: "metaspades" -- every sample
 # or
-bash run_Kelvin.sh results/assemble/megahit/SAMPLE.fa.gz      # if assembler: "megahit"
+bash run_Kelvin.sh assemble__megahit      # if assembler: "megahit" -- every sample
 ```
 
-This is **not** grouped — it's one job, one rule, because there's nothing
-to bundle it with. It's also the heaviest single step in the whole path:
-real metagenomic co-assemblies can need very large memory allocations, and
-complex/deep samples can genuinely exceed what a given tier provides. If
+*Aside — just `sample1`:*
+
+```bash
+bash run_Kelvin.sh results/assemble/metaspades/sample1.fa.gz   # if assembler: "metaspades"
+# or
+bash run_Kelvin.sh results/assemble/megahit/sample1.fa.gz      # if assembler: "megahit"
+```
+
+This is **not** grouped — it's one job per sample, one rule, because there's
+nothing to bundle it with. It's also the heaviest single step in the whole
+path: real metagenomic co-assemblies can need very large memory allocations,
+and complex/deep samples can genuinely exceed what a given tier provides. If
 `metaspades` runs out of memory on a particular sample, `megahit` is the
 standard, much lighter-weight fallback — worth trying before assuming the
 tier just needs to be bigger.
@@ -97,39 +112,60 @@ other step in this walkthrough. Worth checking on this one specifically if
 it's been running a long time with no sign of finishing; a real
 out-of-memory failure shows up there once it happens.
 
-**Output**: `results/assemble/{metaspades,megahit}/SAMPLE.fa.gz` — your
-assembled contigs.
+**Output**: `results/assemble/{metaspades,megahit}/{sample}.fa.gz`, one per
+sample — your assembled contigs.
 
 ## Step 3: Binning
 
-Three independent binners run against the same assembly: `concoct`,
-`maxbin2`, `metabat2`. None of these are grouped with each other — they're
-genuinely independent tools with different resource profiles, so Snakemake
-just schedules all three as separate jobs and runs them concurrently once
-the assembly (and its read-mapping-based coverage info) is ready.
+Three independent binners run against each assembly: `concoct`, `maxbin2`,
+`metabat2`. None of these are grouped with each other — they're genuinely
+independent tools with different resource profiles, so Snakemake schedules
+each as its own job and runs all three concurrently once an assembly (and
+its read-mapping-based coverage info) is ready.
 
-You don't need to target these individually — the next step pulls them in
-as dependencies automatically.
+```bash
+bash run_Kelvin.sh assemble__concoct    # every sample
+bash run_Kelvin.sh assemble__maxbin2    # every sample
+bash run_Kelvin.sh assemble__metabat2   # every sample
+```
+
+*Aside — just `sample1`:*
+
+```bash
+bash run_Kelvin.sh results/assemble/concoct/sample1
+bash run_Kelvin.sh results/assemble/maxbin2/sample1
+bash run_Kelvin.sh results/assemble/metabat2/sample1
+```
+
+You don't need to target any of these individually in the normal case — the
+next step pulls all three in as dependencies automatically.
 
 **Checking progress**: `bash check_progress_kelvin.sh` again — since all
 three binners run concurrently as separate jobs, this is the easiest way to
-see all three at once rather than checking each individually.
+see all three at once (across every sample) rather than checking each
+individually.
 
 ## Step 4: Bin refinement (grouped)
 
 `MAGScoT` reconciles the three binners' results into one consensus set of
-bins. This is the pipeline's other grouped rule: 8 sequential sub-steps
-(gene prediction, two HMM searches, merging, the actual scoring/refinement,
-reformatting, renaming) bundled into **one** SLURM job per assembly, same
-reasoning as Step 1 — several small steps that would otherwise each queue
-on their own.
+bins per assembly. This is the pipeline's other grouped rule: 8 sequential
+sub-steps (gene prediction, two HMM searches, merging, the actual
+scoring/refinement, reformatting, renaming) bundled into **one** SLURM job
+per assembly, same reasoning as Step 1 — several small steps that would
+otherwise each queue on their own.
 
 ```bash
-bash run_Kelvin.sh results/assemble/magscot/SAMPLE/magscot.refined.out
+bash run_Kelvin.sh assemble__magscot
 ```
 
-**Checking progress**: `bash check_progress_kelvin.sh` — again, one job for
-the whole refinement chain, not 8, same as Step 1.
+*Aside — just `sample1`:*
+
+```bash
+bash run_Kelvin.sh results/assemble/magscot/sample1/magscot.refined.out
+```
+
+**Checking progress**: `bash check_progress_kelvin.sh` — again, one job per
+assembly for the whole refinement chain, not 8, same as Step 1.
 
 **A real gotcha worth knowing, if you ever add or change a tier this group
 uses**: every rule sharing a group must request the *same* SLURM partition
@@ -138,18 +174,26 @@ list and the same generic-resource (`gres`) request — a group job is one
 either into one request. If you see `Error grouping resources in group
 '...'` when dry-running (`bash run_Kelvin.sh -n ...`), that's what's
 happening — check `config/escalation.yaml` for which tier each rule in
-the group uses, and make sure they agree.
+the group uses, and make sure they agree. (Real, not hypothetical: this
+exact conflict was found and fixed twice during this fork's development —
+once introducing the group's own dedicated tiers, once again as a
+regression from an unrelated fix, both times caught by a dry run before
+ever reaching real submission.)
 
 ## Step 5: Dereplication
 
-`dRep` removes redundant/highly-similar genomes across the refined bin set,
-producing the final MAG set.
+`dRep` removes redundant/highly-similar genomes across **every** assembly's
+refined bins together, producing one final MAG set for the whole project.
+Unlike every step above, there's no meaningful "just `sample1`" version of
+this one — dereplication is inherently a cross-sample comparison, not a
+per-sample operation.
 
 ```bash
 bash run_Kelvin.sh results/assemble/drep/dereplicated_genomes.fa.gz
 ```
 
-Or, to run the entire path above in one command from a clean project:
+Or, to run the entire path above (Steps 2-5) in one command from a clean
+project:
 
 ```bash
 bash run_Kelvin.sh assemble
@@ -165,20 +209,26 @@ showing every job across all of Steps 2-5 at once, not just dRep's.
 
 ## Step 6: MAG annotation, taxonomy, and quality control
 
-Everything from here on consumes the dereplicated MAG set from Step 5. Unlike
-Steps 1-5, this module (`mag_annotate`) is a collection of independent tools —
-like `read_annotate`, not a linear pipeline — so there's no single "grouped
-chain" here; each tool is its own separate job. Organised by what you asked
-for:
+Everything from here on consumes the dereplicated MAG set from Step 5. Like
+Step 5, most of this module operates on the **whole MAG set at once** —
+GTDB-Tk, CheckM2, QUAST, eggNOG, PhyloPhlAn, and the non-per-assembly `Bakta`
+rule all take the entire dereplicated set as their input, with no per-sample
+wildcard at all, so there's no "just `sample1`" version of these either.
+`DRAM` (the per-assembly variant), the per-assembly `Bakta` rule, and
+`ProteinOrtho` (built from the per-assembly Bakta outputs) are the exception
+— those genuinely run per-assembly, so an aside is shown for them.
 
-**Taxonomy** — `GTDB-Tk` classifies each MAG:
+Organised by what you asked for:
+
+**Taxonomy** — `GTDB-Tk` classifies the whole MAG set (no per-sample variant):
 
 ```bash
-bash run_Kelvin.sh results/mag_annotate/gtdbtk/gtdbtk.summary.tsv
+bash run_Kelvin.sh mag_annotate__gtdbtk
 ```
 
 **Quality control** — `CheckM2` estimates genome completeness/contamination
-per MAG; `QUAST` reports assembly-quality statistics across the MAG set:
+per MAG; `QUAST` reports assembly-quality statistics. Both cover the whole
+MAG set at once (no per-sample variant):
 
 ```bash
 bash run_Kelvin.sh mag_annotate__checkm2
@@ -186,20 +236,33 @@ bash run_Kelvin.sh mag_annotate__quast
 ```
 
 **Functional annotation** — `DRAM`, `eggNOG-mapper`, `CAMPER`, `Bakta`,
-`ProteinOrtho`, and `PhyloPhlAn` all run against the MAG set too. One real
-cross-tool dependency worth knowing: `DRAM`'s own annotation rule requires
-GTDB-Tk's taxonomy output as an input, not just the MAG set — so running
-`DRAM` on its own still triggers a real GTDB-Tk classification first if you
-haven't run it already; this is normal, not a mistake in what you targeted.
+`ProteinOrtho`, and `PhyloPhlAn`. One real cross-tool dependency worth
+knowing: `DRAM`'s (whole-set) annotation rule requires GTDB-Tk's taxonomy
+output as an input, not just the MAG set — so running `DRAM` on its own
+still triggers a real GTDB-Tk classification first if you haven't run it
+already; this is normal, not a mistake in what you targeted. `CAMPER` in
+turn depends on that same whole-set `DRAM` output.
 
 ```bash
-bash run_Kelvin.sh mag_annotate__dram_mags
-bash run_Kelvin.sh mag_annotate__eggnog
-bash run_Kelvin.sh mag_annotate__camper
-bash run_Kelvin.sh mag_annotate__bakta_mags
-bash run_Kelvin.sh mag_annotate__proteinortho
-bash run_Kelvin.sh mag_annotate__phylophlan
+bash run_Kelvin.sh mag_annotate__dram_mags     # per-assembly DRAM run, every assembly
+bash run_Kelvin.sh mag_annotate__eggnog        # whole MAG set, no per-sample variant
+bash run_Kelvin.sh mag_annotate__camper        # whole MAG set, no per-sample variant
+bash run_Kelvin.sh mag_annotate__bakta_mags    # per-assembly Bakta run, every assembly
+bash run_Kelvin.sh mag_annotate__proteinortho  # built from every assembly's Bakta output
+bash run_Kelvin.sh mag_annotate__phylophlan    # whole MAG set, no per-sample variant
 ```
+
+*Aside — just `sample1`, for the genuinely per-assembly ones:*
+
+```bash
+bash run_Kelvin.sh results/mag_annotate/dram_mags/sample1/genome_stats.tsv
+bash run_Kelvin.sh results/mag_annotate/bakta_mags/bakta_sample1.faa
+```
+
+(`proteinortho` compares Bakta output *across* assemblies, so like Step 5's
+dRep, it doesn't have a meaningful single-sample form either — running it
+for `sample1` alone would need every other assembly's Bakta output to be
+uninteresting to compare against, which defeats the point.)
 
 Or, all of the above at once — every tool in this module, for every MAG:
 
@@ -212,14 +275,15 @@ step — with this many independent tools potentially running at once, this is
 the easiest way to see everything together rather than checking each one.
 
 **Output**: `results/mag_annotate/`, one subfolder per tool (`gtdbtk/`,
-`checkm2/`, `quast/`, `dram/`, `eggnog/`, `camper/`, `bakta_mags/`,
-`proteinortho/`, `phylophlan/`).
+`checkm2/`, `quast/`, `dram/`, `dram_mags/`, `eggnog/`, `camper/`, `bakta/`,
+`bakta_mags/`, `proteinortho/`, `phylophlan/`).
 
 ## Run everything in one command
 
 Every step above — preprocessing through MAG annotation/taxonomy/quality —
 is really just one dependency chain. Targeting the furthest-downstream output
-pulls in everything upstream of it automatically:
+pulls in everything upstream of it automatically, for every sample in the
+project:
 
 ```bash
 bash run_Kelvin.sh mag_annotate
@@ -227,7 +291,7 @@ bash run_Kelvin.sh mag_annotate
 
 **Does grouping still apply when you invoke it this way, rather than one step
 at a time?** Yes — confirmed directly, not assumed: a real dry run
-(`bash run_Kelvin.sh -n mag_annotate`) shows `Group job magscot_37131`
+(`bash run_Kelvin.sh -n mag_annotate`) shows `Group job magscot_<assembly>`
 appearing in the dispatch exactly as it does when `assemble` is targeted
 directly, even though the actual target here is several steps further
 downstream. Grouping is a property of the rule itself, not of how you invoke
