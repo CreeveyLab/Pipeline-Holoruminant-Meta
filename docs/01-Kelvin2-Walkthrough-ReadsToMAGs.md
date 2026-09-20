@@ -43,13 +43,13 @@ its real output file instead:
 See [docs/00-Kelvin2-Quickstart.md § Finding the right target to run](00-Kelvin2-Quickstart.md#5-finding-the-right-target-to-run)
 for how to find paths like this yourself.)
 
-**What to expect in `squeue`**: one job, not one per host or per step — its
-name will be a UUID, not something human-readable, but you can confirm it's
-the right one by matching the working directory (`squeue -u $USER -o "%.12i %.10T %Z"`)
-against your project directory. Easier: `bash check_progress_kelvin.sh` shows
-this (and the orchestrator's own status, and recent log progress) without
-needing to match anything up yourself — this step alone can run for many
-hours, so this is worth checking in on rather than watching the terminal.
+**Checking progress**: `bash check_progress_kelvin.sh` — shows the
+orchestrator's own status, every real job it has submitted, and recent log
+progress, all in one place. (Under the hood this is one job in `squeue`, not
+one per host or per step — its name will be a UUID, not something
+human-readable, which is exactly why `check_progress_kelvin.sh` is easier
+than matching things up yourself.) This step alone can run for many hours,
+so this is worth checking in on rather than watching the terminal.
 
 **Real timing, for reference**: on a real ~350-million-read paired library,
 this full cascade (4 hosts × build/map/extract, plus `fastp`) took around
@@ -81,6 +81,11 @@ complex/deep samples can genuinely exceed what a given tier provides. If
 standard, much lighter-weight fallback — worth trying before assuming the
 tier just needs to be bigger.
 
+**Checking progress**: `bash check_progress_kelvin.sh` — same as every
+other step in this walkthrough. Worth checking on this one specifically if
+it's been running a long time with no sign of finishing; a real
+out-of-memory failure shows up there once it happens.
+
 **Output**: `results/assemble/{metaspades,megahit}/SAMPLE.fa.gz` — your
 assembled contigs.
 
@@ -95,6 +100,10 @@ the assembly (and its read-mapping-based coverage info) is ready.
 You don't need to target these individually — the next step pulls them in
 as dependencies automatically.
 
+**Checking progress**: `bash check_progress_kelvin.sh` again — since all
+three binners run concurrently as separate jobs, this is the easiest way to
+see all three at once rather than checking each individually.
+
 ## Step 4: Bin refinement (grouped)
 
 `MAGScoT` reconciles the three binners' results into one consensus set of
@@ -108,8 +117,8 @@ on their own.
 bash run_Kelvin.sh results/assemble/magscot/SAMPLE/magscot.refined.out
 ```
 
-**What to expect in `squeue`**: again, one job for the whole refinement
-chain, not 8.
+**Checking progress**: `bash check_progress_kelvin.sh` — again, one job for
+the whole refinement chain, not 8, same as Step 1.
 
 **A real gotcha worth knowing, if you ever add or change a tier this group
 uses**: every rule sharing a group must request the *same* SLURM partition
@@ -134,6 +143,10 @@ Or, to run the entire path above in one command from a clean project:
 ```bash
 bash run_Kelvin.sh assemble
 ```
+
+**Checking progress**: `bash check_progress_kelvin.sh`, as with every other
+step — this also works if you ran the whole path in one command above,
+showing every job across all of Steps 2-5 at once, not just dRep's.
 
 **Output**:
 - `results/assemble/drep/dereplicated_genomes.fa.gz` — all final MAGs, concatenated.
