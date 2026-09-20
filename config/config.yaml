@@ -295,9 +295,14 @@ resource_sets:
                           # real margin under k2-medpri's 1440min cap, but
                           # deliberately excludes k2-hipri -- would almost
                           # certainly blow the 180min cap.
-    mem_mb: 32000          # docs: 16GB min, 20-25GB typical peak, up to ~72GB
-                          # in some larger-DB reports; picked above typical
-                          # peak, below worst case
+    # Real evidence correction (2026-09-20): job 9939585 hit a real, confirmed
+    # OOM ("Detected 2 oom_kill events... Out Of Memory") after 3h31m, well
+    # within the 900min runtime budget. 32GB (chosen as "above typical peak,
+    # below worst case") wasn't enough -- this real sample falls into the
+    # documented "larger-DB" heavy category, not the 20-25GB typical case.
+    # Bumped toward the documented ~72GB worst case rather than a small
+    # increment.
+    mem_mb: 80000
     cpus: 10
     partition: "k2-medpri,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
