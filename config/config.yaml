@@ -276,10 +276,16 @@ resource_sets:
     # compressed R1 alone), run per-thread (cpus: 4). Bumped substantially
     # rather than guess a precise number a second time; still well under
     # the original 160GB default. Revisit once it actually succeeds.
-    runtime: 90           # not implicated in the failure, left as-is
+    # Second real evidence correction: with the OOM fixed, job 9939587 ran
+    # cleanly for the full 90min budget and hit TIMEOUT -- same pattern as
+    # metaphlan/singlem's original underestimates. Real time for aligning
+    # a full 171M-read direction, even against a small 1.8GB target DB, is
+    # genuinely more than 90min. Bumped past what phyloflash/metaphlan
+    # actually needed for real (75-205min) and dropped from k2-hipri.
+    runtime: 300
     mem_mb: 64000
     cpus: 4
-    partition: "k2-hipri,k2-medpri,k2-lowpri,k2-bioinf"
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"  # no real nvme gres on Kelvin2, see kelvin_read_kraken2
 
   kelvin_read_humann:  # humann__run -- NOT a hipri candidate, real evidence
