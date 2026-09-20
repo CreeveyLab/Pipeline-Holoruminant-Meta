@@ -76,12 +76,29 @@ echo "Pipeline folder   : ${pipelineFolder}"
 mkdir -p slurm_out
 mkdir -p "$projectFolder/tmp"
 
-# Pre-flight safety gate (CLAUDE.md Section 4 incidents #2/#6): refuses to
-# launch if a previous generation's SLURM jobs or orchestrator process are
-# still alive for this project -- see workflow/scripts/kelvin_launch_guard.sh
-# for what it actually checks and why "kill" alone isn't a safe signal.
-if ! "$pipelineFolder/workflow/scripts/kelvin_launch_guard.sh" "$projectFolder"; then
-    exit 1
+# Dry runs (-n / --dry-run) are fast, read-only, and safe to run even
+# alongside an already-active real run for this project -- skip the launch
+# guard and the orchestrator-submission machinery below entirely, and just
+# run directly in the foreground so the output appears immediately.
+DRY_RUN=0
+for arg in "$@"; do
+    case "$arg" in
+        -n|--dry-run) DRY_RUN=1 ;;
+    esac
+done
+
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    # Pre-flight safety gate (CLAUDE.md Section 4 incidents #2/#6): refuses to
+    # launch if a previous generation's SLURM jobs or orchestrator process are
+    # still alive for this project -- see workflow/scripts/kelvin_launch_guard.sh
+    # for what it actually checks and why "kill" alone isn't a safe signal.
+    if ! "$pipelineFolder/workflow/scripts/kelvin_launch_guard.sh" "$projectFolder"; then
+        echo ""
+        echo "Not launching a second orchestrator -- checking the active run's status instead:"
+        echo ""
+        "$pipelineFolder/workflow/scripts/check_progress_kelvin.sh" "$projectFolder"
+        exit 1
+    fi
 fi
 
 # Bind-mount list (see header comment). Points at the central reference/
@@ -113,15 +130,64 @@ BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scra
 # becomes real and gets wired into a rule.
 SINGULARITY_PREFIX="/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-containers/"
 
-snakemake -s "$pipelineFolder/workflow/Snakefile" \
-          --jobs 150 \
-          --use-singularity \
-          --configfile "$configFile" \
-          --profile "$Profile" \
-          --singularity-args "--userns -B $BIND_PATHS" \
-          --singularity-prefix "$SINGULARITY_PREFIX" \
-          --latency-wait 60 \
-          --scheduler greedy \
-          --resources metaspades_slots=$metaspades_slots \
-          --rerun-incomplete \
-          "$@"
+SNAKEMAKE_INVOCATION() {
+    snakemake -s "$pipelineFolder/workflow/Snakefile" \
+              --jobs 150 \
+              --use-singularity \
+              --configfile "$configFile" \
+              --profile "$Profile" \
+              --singularity-args "--userns -B $BIND_PATHS" \
+              --singularity-prefix "$SINGULARITY_PREFIX" \
+              --latency-wait 60 \
+              --scheduler greedy \
+              --resources metaspades_slots=$metaspades_slots \
+              --rerun-incomplete \
+              "$@"
+}
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+    SNAKEMAKE_INVOCATION "$@"
+    exit $?
+fi
+
+# Real launch: run the orchestrator directly on this (login/data-mover)
+# node, backgrounded and detached automatically, rather than submitting it
+# as a SLURM job itself.
+#
+# An earlier version of this script submitted the orchestrator as its own
+# small SLURM job on k2-bioinf,k2-lowpri, specifically so it would show up
+# in `squeue` for unified monitoring. Reverted after finding a real problem
+# with that (2026-09-20): the orchestrator job's own queue-wait is additive
+# to whatever queue-wait the real work needs anyway -- on an account with
+# reduced fairshare priority (e.g. from genuinely heavy recent real usage),
+# a tiny 1-CPU/2GB wrapper job can sit queued for a long time before it even
+# starts submitting the real work, which can cost *more* total wall-clock
+# than just running the orchestrator directly ever would have. The
+# monitoring benefit doesn't actually require the orchestrator to be a
+# SLURM job -- check_progress_kelvin.sh gives the same unified view (this
+# process's status + every real job it has submitted) without that cost.
+#
+# Ignoring SIGHUP (what nohup normally does) plus disown here -- rather
+# than requiring the user to remember tmux/screen/nohup themselves -- is
+# what makes this survive a logout: the trap stops the subshell from
+# dying when the shell exits and sends it SIGHUP, and disown removes it
+# from this shell's job table so the shell exiting doesn't affect it
+# either. A subshell with its own trap (rather than piping through an
+# external `nohup ... &` command) also means "$@" gets passed straight
+# through as real, already-correctly-split arguments -- no need to
+# flatten them into a re-quoted string first.
+ORCH_LOG="$projectFolder/slurm_out/kelvin_orchestrator.log"
+
+(
+    trap '' HUP
+    SNAKEMAKE_INVOCATION "$@" > "$ORCH_LOG" 2>&1
+) &
+disown
+ORCH_PID=$!
+
+echo ""
+echo "Orchestrator running as PID $ORCH_PID on $(hostname)."
+echo "Log: $ORCH_LOG"
+echo ""
+echo "Check progress any time with:"
+echo "  $pipelineFolder/workflow/scripts/check_progress_kelvin.sh $projectFolder"

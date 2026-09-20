@@ -135,6 +135,14 @@ sed \
   "$PIPELINE_FOLDER/run_Kelvin.sh" > "$PROJECT_DIR/run_Kelvin.sh"
 chmod +x "$PROJECT_DIR/run_Kelvin.sh"
 
+# Progress-checking companion (see workflow/scripts/check_progress_kelvin.sh)
+# -- same templating approach as run_Kelvin.sh, so `bash check_progress_kelvin.sh`
+# works with no arguments from inside the project directory.
+sed \
+  -e "s|^projectFolder=.*|projectFolder=\"$PROJECT_DIR\"|" \
+  "$PIPELINE_FOLDER/workflow/scripts/check_progress_kelvin.sh" > "$PROJECT_DIR/check_progress_kelvin.sh"
+chmod +x "$PROJECT_DIR/check_progress_kelvin.sh"
+
 echo "Project scaffolded. Running a dry-run self-check..."
 
 cd "$PROJECT_DIR"
