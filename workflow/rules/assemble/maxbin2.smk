@@ -38,7 +38,6 @@ rule assemble__maxbin2__run:
           ) > {params.coverage} \
           2> {log}
 
-
         run_MaxBin.pl \
             -thread {threads} \
             -contig {input.assembly} \
@@ -51,6 +50,7 @@ rule assemble__maxbin2__run:
             's/\\.fasta$/.fa/' \
             {params.workdir}/*.fasta \
         2>> {log}
+        
 
 
         fa_files=$(find {params.workdir} -name "*.fa")
