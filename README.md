@@ -1,6 +1,6 @@
-> **This is a modified fork**, maintained for running this pipeline on **Kelvin2, the HPC cluster at Queen's University Belfast**. It diverges from the upstream [`fischuu/Snakebite-Holoruminant-MetaG`](https://github.com/fischuu/Snakebite-Holoruminant-MetaG) pipeline (and its own upstream, [`3d-omics/mg_assembly`](https://github.com/3d-omics/mg_assembly)) with a Kelvin2-specific SLURM profile (`config/profiles/Kelvin/`), recalibrated per-rule resource tiers, a project bootstrap script (`workflow/scripts/bootstrap_project.sh`), and a shared, group-writable container image cache. If you're not running on Kelvin2 at QUB, the upstream repository is very likely what you want instead.
+> **This is a modified fork**, maintained for running this pipeline on **Kelvin2, the HPC cluster at Queen's University Belfast**. It diverges from upstream ([`fischuu/Snakebite-Holoruminant-MetaG`](https://github.com/fischuu/Snakebite-Holoruminant-MetaG), itself a fork of [`3d-omics/mg_assembly`](https://github.com/3d-omics/mg_assembly)) with a Kelvin2 SLURM profile (`config/profiles/Kelvin/`), per-rule resource tiers, a project bootstrap script (`workflow/scripts/bootstrap_project.sh`), and a shared container image cache. Not on Kelvin2 at QUB? Use upstream instead.
 >
-> **New here? Start with [docs/00-Kelvin2-Quickstart.md](docs/00-Kelvin2-Quickstart.md)** (setup), **[docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md](docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md)** (a worked, step-by-step example: raw reads to MAGs), and **[docs/02-Kelvin2-Rule-Reference.md](docs/02-Kelvin2-Rule-Reference.md)** (every module → tool → exact rule name to run).
+> **New here? Start with [docs/00-Kelvin2-Quickstart.md](docs/00-Kelvin2-Quickstart.md)** (setup), **[docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md](docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md)** (worked example: raw reads to MAGs), and **[docs/02-Kelvin2-Rule-Reference.md](docs/02-Kelvin2-Rule-Reference.md)** (module → tool → exact rule name).
 
 # Overview
 
@@ -20,34 +20,32 @@ run individual tools, giving full flexibility on how to use and run the pipeline
 
 ![Major modules of the pipeline](flowchart/module_overview.png)
 
-A higher-level view of the same thing: the major modules and how they feed into each other.
-Hand-drawn (`flowchart/module_overview.dot`), but every edge was verified against real
-cross-module references in `workflow/rules/` rather than assumed — see
-`flowchart/render_module_overview.sh` to regenerate after a real structural change.
+The major modules and how they feed into each other. Hand-drawn
+(`flowchart/module_overview.dot`), edges checked against cross-module references in
+`workflow/rules/`. Regenerate after a structural change with
+`flowchart/render_module_overview.sh`.
 
 ![Flow diagram of the pipeline](flowchart/flowchart.png)
 
-The full detail behind that: the real rule-dependency graph of this fork's current
-`workflow/rules/`, generated with Snakemake's own `--rulegraph` (see
-`flowchart/generate_rulegraph.sh`) rather than hand-drawn, so it can't drift out of sync
-with the actual rules. It's far more granular (raw rule names) than the module view above —
-see that script's header comment for how to regenerate it and the caveats involved.
+The full rule-dependency graph, generated from `workflow/rules/` with Snakemake's own
+`--rulegraph` (see `flowchart/generate_rulegraph.sh`), so it can't go stale. More granular
+(raw rule names) than the module view above.
 
 # Running this fork on Kelvin2
 
 **Full walkthrough: [docs/00-Kelvin2-Quickstart.md](docs/00-Kelvin2-Quickstart.md)** — prerequisites,
-cloning, bootstrapping a project, launching, how the resource-tier system works, and known
-limitations. Start there; this section is just the condensed version.
+cloning, bootstrapping a project, launching, the resource-tier system, known limitations.
+Start there; this section is just the condensed version.
 
 **Worked example, raw reads to MAGs: [docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md](docs/01-Kelvin2-Walkthrough-ReadsToMAGs.md)**
-— a concrete, step-by-step run through preprocessing, assembly, binning, and dereplication,
-including exactly what to expect from the two grouped rules along the way.
+— preprocessing through assembly, binning, and dereplication, including what to expect
+from the two grouped rules.
 
 ```bash
 # 1. Clone your own copy (see the quickstart for why "your own")
 git clone git@github.com:CreeveyLab/Pipeline-Holoruminant-Meta.git
 
-# 2. Scaffold a new project from your real reads
+# 2. Scaffold a new project from your reads
 Pipeline-Holoruminant-Meta/workflow/scripts/bootstrap_project.sh <project_dir> \
   --reads-dir <directory with your *_R1_*/*_R2_*.fastq.gz files>
 
@@ -56,9 +54,8 @@ cd <project_dir>
 bash run_Kelvin.sh
 ```
 
-`bootstrap_project.sh` wires your project up to the shared, central reference-genome/database
-store and container cache automatically — you shouldn't need to download or configure either
-yourself.
+`bootstrap_project.sh` wires your project to the shared reference-genome/database store and
+container cache automatically — no download or config needed.
 
 # Installation, Setup and running the pipeline (upstream, generic)
 

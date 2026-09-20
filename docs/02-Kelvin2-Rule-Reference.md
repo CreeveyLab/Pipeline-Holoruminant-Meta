@@ -1,12 +1,11 @@
 # Kelvin2 rule name reference
 
-`bash run_Kelvin.sh <target>` requires an **exact** match — either a real output
+`bash run_Kelvin.sh <target>` requires an **exact** match — either an output
 file path, or a rule name spelled exactly as it appears in `workflow/rules/`.
-There is no fuzzy or partial-name matching: `bash run_Kelvin.sh bowtie` does
-not resolve to anything, and — this is the concrete reason fuzzy matching
-wouldn't even help — **"bowtie2" alone is genuinely ambiguous across this
-pipeline**. There are six different, valid, exact rule names covering
-bowtie2 across three separate modules:
+There's no fuzzy or partial-name matching: `bash run_Kelvin.sh bowtie` does
+not resolve to anything. Fuzzy matching wouldn't even help, since
+**"bowtie2" alone is ambiguous** — six valid rule names cover it across
+three modules:
 
 | Rule name | Module | What it runs |
 |---|---|---|
@@ -17,39 +16,31 @@ bowtie2 across three separate modules:
 | `quantify__bowtie2` | Quantify | Align every sample to the dereplicated genome catalogue |
 | `quantify__bowtie2__build` | Quantify | Index the dereplicated genome catalogue |
 
-Picking the wrong one, or typing a name that isn't in this list, is the whole
-reason this reference exists — use the tables below to find the exact string
-to type.
+Use the tables below to find the exact string to type.
 
 ## Why there's no fuzzy matching
 
-Snakemake targets are always **files** under the hood. A rule name is just a
-shorthand for "the file(s) this rule produces" — see
-[00-Kelvin2-Quickstart.md](00-Kelvin2-Quickstart.md), Section 5. Two real
-constraints follow directly from that, both verified against this fork's
-actual current rules (2026-09-20):
+Snakemake targets are always **files**. A rule name is shorthand for "the
+file(s) this rule produces" — see
+[00-Kelvin2-Quickstart.md](00-Kelvin2-Quickstart.md), Section 5. Two
+constraints follow from that:
 
-- **Only wildcard-free rules can be targeted by bare name.** Most real tool
-  rules are wildcarded (one instance per sample/assembly, e.g.
-  `preprocess__fastp__run`) — targeting one of those directly fails with a
-  real Snakemake error (`WorkflowError: Target rules may not contain
-  wildcards`). Every module defines a wildcard-free **aggregator** rule
-  instead (e.g. `preprocess__fastp`) that simply lists every real instance as
-  its `input:` — that's what you actually target. The tables below list only
-  these valid, wildcard-free target names, confirmed directly against
-  Snakemake's own `--list-target-rules` output for this fork, not guessed
-  from naming convention.
-- **No single file represents "a whole module" or "a whole tool" by itself**
-  — the aggregator rule name is the only thing that stands in for "all of
-  this at once." That's why you target it by rule name rather than by an
-  output path.
+- **Only wildcard-free rules can be targeted by bare name.** Most tool rules
+  are wildcarded (one instance per sample/assembly, e.g.
+  `preprocess__fastp__run`) — targeting one directly fails with
+  `WorkflowError: Target rules may not contain wildcards`. Every module
+  defines a wildcard-free **aggregator** rule instead (e.g. `preprocess__fastp`)
+  that lists every instance as its `input:` — that's what you target. The
+  tables below list only these, confirmed against `--list-target-rules`.
+- **No single file represents "a whole module" or "a whole tool."** The
+  aggregator rule name is the only thing that stands in for "all of this at
+  once" — hence targeting by rule name instead of an output path.
 
-If you'd rather target a specific file directly (one sample, one
-assembly, one specific piece of output) instead of "every sample this tool
-touches," see `workflow/rules/folders.smk` and
-[00-Kelvin2-Quickstart.md](00-Kelvin2-Quickstart.md) Section 5 for how to find
-that path, or run `bash run_Kelvin.sh -n <rule-name>` to print every concrete
-file the aggregator would touch.
+To target a specific file, sample, or assembly instead, see
+`workflow/rules/folders.smk` and
+[00-Kelvin2-Quickstart.md](00-Kelvin2-Quickstart.md) Section 5, or run
+`bash run_Kelvin.sh -n <rule-name>` to print every file the aggregator
+would touch.
 
 ---
 
@@ -156,23 +147,20 @@ file the aggregator would touch.
 
 ## Report
 
-The report module is under active development upstream and currently has a
-naming quirk worth knowing about rather than working around silently: every
-per-module report has **two** parallel rule names, e.g. both
+The report module is under active development upstream and has a naming
+quirk: every per-module report has **two** parallel rule names, e.g. both
 `report__assemble` and `report_assemble` exist (single vs. double underscore)
 and produce the same thing. Either works; pick one. `report` runs everything.
 
 ---
 
-*Two rules are intentionally left out of every table above:* `all` (targets
-the entire pipeline — same as running with no target at all) and `test_error`
-(a developer-only rule under `workflow/rules/devel/` that deliberately
-throws, used to test error handling — not meant to be run by users).
+*Left out of the tables above:* `all` (the entire pipeline — same as no
+target) and `test_error` (a developer-only rule under `workflow/rules/devel/`
+that deliberately throws, for testing error handling — not for users).
 
-This list was generated against this fork's actual rules via Snakemake's own
-`snakemake --list-target-rules` (which already excludes wildcarded,
-non-targetable rules) — regenerate it the same way after adding or renaming a
-rule, rather than trusting this file to stay current on its own:
+Generated via Snakemake's own `snakemake --list-target-rules` (which already
+excludes wildcarded, non-targetable rules) — regenerate the same way after
+adding or renaming a rule:
 
 ```bash
 cd <your-project-dir>
