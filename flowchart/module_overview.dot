@@ -1,0 +1,37 @@
+digraph modules {
+    graph [layout = dot, rankdir = LR, fontname = "Helvetica", nodesep = 0.6, ranksep = 0.9]
+    node [shape = box, style = "filled,rounded", fillcolor = lightblue, fontname = "Helvetica", margin = "0.25,0.15"]
+    edge [arrowhead = vee, color = "#555555"]
+
+    reads         [label = "Reads", shape = folder, fillcolor = "#f5deb3"]
+    reference     [label = "Reference\n(host genomes)", shape = folder, fillcolor = "#f5deb3"]
+    preprocess    [label = "Preprocess\n(fastp, host decontamination)"]
+    read_annotate [label = "Read Annotate\n(kraken2, humann, metaphlan,\nphyloflash, singlem, ...)"]
+    assemble      [label = "Assemble\n(MEGAHIT/metaSPAdes, binning,\nMAGScoT, dRep)"]
+    contig_annotate [label = "Contig Annotate\n(prodigal, eggnog, camper,\nhmmer, featurecounts)"]
+    mag_annotate  [label = "MAG Annotate\n(GTDB-Tk, DRAM, checkm2,\nbakta, eggnog, ...)"]
+    quantify      [label = "Quantify\n(bowtie2, coverM)"]
+    report        [label = "Report", fillcolor = "#d9ead3"]
+
+    reads -> preprocess
+    reference -> preprocess
+
+    preprocess -> read_annotate
+    preprocess -> assemble
+
+    assemble -> contig_annotate
+    assemble -> mag_annotate
+    assemble -> quantify
+
+    { rank = same; read_annotate; contig_annotate; mag_annotate; quantify; }
+
+    edge [style = dashed, color = "#999999", arrowhead = empty]
+    reads -> report
+    reference -> report
+    preprocess -> report
+    read_annotate -> report
+    assemble -> report
+    contig_annotate -> report
+    mag_annotate -> report
+    quantify -> report
+}

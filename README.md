@@ -18,13 +18,20 @@ This makes it straight forward and as user-friendly as it can get.
 The pipeline is organised in modules, which can run one-by-one. Further, the user can also choose to
 run individual tools, giving full flexibility on how to use and run the pipeline.
 
+![Major modules of the pipeline](flowchart/module_overview.png)
+
+A higher-level view of the same thing: the major modules and how they feed into each other.
+Hand-drawn (`flowchart/module_overview.dot`), but every edge was verified against real
+cross-module references in `workflow/rules/` rather than assumed — see
+`flowchart/render_module_overview.sh` to regenerate after a real structural change.
+
 ![Flow diagram of the pipeline](flowchart/flowchart.png)
 
-This diagram is the real rule-dependency graph of this fork's current `workflow/rules/`,
-generated with Snakemake's own `--rulegraph` (see `flowchart/generate_rulegraph.sh`) rather
-than hand-drawn, so it can't drift out of sync with the actual rules. It's more granular
-(raw rule names) than a hand-maintained module diagram would be — see that script's header
-comment for how to regenerate it and the caveats involved.
+The full detail behind that: the real rule-dependency graph of this fork's current
+`workflow/rules/`, generated with Snakemake's own `--rulegraph` (see
+`flowchart/generate_rulegraph.sh`) rather than hand-drawn, so it can't drift out of sync
+with the actual rules. It's far more granular (raw rule names) than the module view above —
+see that script's header comment for how to regenerate it and the caveats involved.
 
 # Running this fork on Kelvin2
 
