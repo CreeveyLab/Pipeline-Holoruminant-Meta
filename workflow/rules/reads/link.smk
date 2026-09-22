@@ -13,9 +13,17 @@ rule reads__link_run:
     container:
         docker["reads"]
     shell:
+        # --force: this rule is the very first thing the whole pipeline
+        # does, and run_Kelvin.sh always passes --rerun-incomplete. Any
+        # earlier interrupted run (killed job, crash further downstream,
+        # a retry) that got this far before failing leaves a real symlink
+        # behind; without --force, a legitimate Snakemake retry of this
+        # (correctly) incomplete job fails immediately with
+        # "ln: failed to create symbolic link ...: File exists" instead of
+        # just recreating the link, which is what should always happen.
         """
-        ln --symbolic $(readlink --canonicalize {input.forward_}) {output.forward_} 2>  {log} 1>&2
-        ln --symbolic $(readlink --canonicalize {input.reverse_}) {output.reverse_} 2>> {log} 1>&2
+        ln --symbolic --force $(readlink --canonicalize {input.forward_}) {output.forward_} 2>  {log} 1>&2
+        ln --symbolic --force $(readlink --canonicalize {input.reverse_}) {output.reverse_} 2>> {log} 1>&2
         """
 
 rule reads__link:

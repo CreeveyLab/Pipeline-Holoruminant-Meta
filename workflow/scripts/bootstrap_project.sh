@@ -110,6 +110,20 @@ else
       continue
     fi
     sample_id="${fname%%"${SAMPLE_ID_DELIM}"*}"
+    # Real bug found 2026-09-22: bash's ${var%%pattern} returns the whole
+    # string UNCHANGED when the pattern (here, the delimiter) never
+    # matches -- so a filename that doesn't contain SAMPLE_ID_DELIM at all
+    # silently becomes its own sample_id, dot-extensions and all (e.g.
+    # "12223_D5T3R3_S19_R1_001.fastq.gz" if the delimiter is '-' but the
+    # filename only uses '_'). That garbage sample_id then flows straight
+    # into every downstream output path. Refuse instead of guessing.
+    if [[ "$sample_id" == "$fname" ]]; then
+      echo "ERROR: delimiter '$SAMPLE_ID_DELIM' not found in filename '$fname' --" >&2
+      echo "  sample_id would become the entire filename. Pass the correct" >&2
+      echo "  --sample-id-delimiter for your lab's naming convention (e.g. '_' for" >&2
+      echo "  ${fname%%_*}_...)." >&2
+      exit 1
+    fi
     ln -sf "$reads_dir_abs/$fname" "$PROJECT_DIR/reads/$fname"
     ln -sf "$reads_dir_abs/$rev_name" "$PROJECT_DIR/reads/$rev_name"
     printf "%s\tlib1\treads/%s\treads/%s\t%s\t%s\t%s\n" \
