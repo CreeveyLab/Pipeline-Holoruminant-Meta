@@ -106,18 +106,51 @@ rule contig_annotate__eggnog_orthology_chunk:
             ) 200>"$COUNTER_FILE.lock"
     
             # === Copy DB if not already done ===
+            # Loops around the acquire attempt (rather than a single
+            # try/else) so a stale lock can be detected and broken on any
+            # iteration, not just the first.
             if [ ! -f "$DONE_FILE" ]; then
-                if mkdir "$LOCK_FILE" 2>/dev/null; then
-                    echo "This job has the lock, copying DB..." >> {log}
-                    cp -r {params.fa}/* $DATA_DIR/ >> {log} 2>&1
-                    touch "$DONE_FILE"
-                    rmdir "$LOCK_FILE"
-                else
+                while true; do
+                    if mkdir "$LOCK_FILE" 2>/dev/null; then
+                        # Re-check DONE_FILE now that we hold the lock: the
+                        # previous holder touches DONE_FILE, THEN removes
+                        # LOCK_FILE, so by the time our mkdir succeeds
+                        # (retried each loop iteration, unlike the original
+                        # single-attempt version) the real work may already
+                        # be done -- avoid a needless duplicate copy.
+                        if [ -f "$DONE_FILE" ]; then
+                            rmdir "$LOCK_FILE"
+                            break
+                        fi
+                        echo "This job has the lock, copying DB..." >> {log}
+                        cp -r {params.fa}/* $DATA_DIR/ >> {log} 2>&1
+                        touch "$DONE_FILE"
+                        rmdir "$LOCK_FILE"
+                        break
+                    fi
+                    if [ -f "$DONE_FILE" ]; then
+                        break
+                    fi
+                    # Stale-lock recovery: if the job that created $LOCK_FILE
+                    # died mid-copy (OOM/time-limit/node failure -- normal on
+                    # a shared cluster) before reaching `rmdir`, every other
+                    # job needing this DB -- including any later retry --
+                    # would otherwise sleep here forever, since nothing ever
+                    # creates $DONE_FILE. Real, confirmed failure mode
+                    # (2026-09-22), not hypothetical. If the lock is older
+                    # than 60 minutes (generous margin over a real DB copy)
+                    # and DONE_FILE still hasn't appeared, treat it as
+                    # abandoned and break it so the next loop iteration can
+                    # take over -- mkdir's own atomicity still means only one
+                    # concurrently-waiting job actually wins the retry.
+                    if [ -z "$(find "$LOCK_FILE" -maxdepth 0 -mmin -60 2>/dev/null)" ]; then
+                        echo "Lock $LOCK_FILE is >60min old with no DONE_FILE -- treating as abandoned, breaking it" >> {log}
+                        rmdir "$LOCK_FILE" 2>/dev/null || true
+                        continue
+                    fi
                     echo "Another job is copying the DB, waiting..." >> {log}
-                    while [ ! -f "$DONE_FILE" ]; do
-                        sleep 30
-                    done
-                fi
+                    sleep 30
+                done
             fi
       # If db copy is not requested, use the original location
         else 
@@ -135,9 +168,24 @@ rule contig_annotate__eggnog_orthology_chunk:
                    --cpu {threads} >> {log} 2>&1
 
         # === Decrement counter and cleanup if last job ===
+        # Residual known risk, not fully solved here: if a job dies between
+        # its own increment (above) and this decrement -- i.e. anywhere
+        # during emapper.py's run -- that increment is never balanced, so
+        # the counter can never legitimately reach zero again and $DATA_DIR
+        # is never cleaned up (a leak, not a crash). Properly fixing that
+        # needs real per-job tracking (e.g. one marker file per job, removed
+        # on clean exit, counted instead of a mutable integer) rather than a
+        # shared counter file -- a bigger change than this pass covers. The
+        # guard below only prevents a DIFFERENT, more acute problem: this
+        # block crashing outright (and losing an otherwise-successful
+        # emapper.py run) if $COUNTER_FILE was already removed by whichever
+        # sibling job legitimately finished last and cleaned up first.
         (
             flock -x 200
-            COUNT=$(cat "$COUNTER_FILE")
+            COUNT=0
+            if [ -f "$COUNTER_FILE" ]; then
+                COUNT=$(cat "$COUNTER_FILE")
+            fi
             COUNT=$((COUNT - 1))
             if [ $COUNT -le 0 ]; then
                 echo 0 > "$COUNTER_FILE"

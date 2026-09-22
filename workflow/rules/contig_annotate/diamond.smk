@@ -26,9 +26,23 @@ rule contig_annotate__diamond__assign:
         copy_dbs=config["copy_dbs"],
         diamond_shm=DIAMONDSHM,
         diamond_nvme=DIAMONDNVME,
-        diamond_db_shm=lambda w: os.path.join(DIAMONDSHM, w.diamond_db),
+        # Real bug fixed 2026-09-22: this rule runs once per (diamond_db,
+        # assembly_id) -- many parallel jobs share the same diamond_db, so a
+        # staging path keyed only by diamond_db (the old behavior) put every
+        # one of those jobs' copy AND cleanup against the exact same shared
+        # directory, with no coordination at all. Each job unconditionally
+        # rm -rf's this path when it finishes -- a fast job deleting the DB
+        # out from under a still-running sibling is a real, plausible
+        # failure, not hypothetical, and it's not retry-specific: it can
+        # happen on a normal successful parallel run given enough timing
+        # variance. Fixed by keying the staging path per-assembly too, so
+        # parallel jobs never share it. Real diamond DBs here are small
+        # (~1.8GB for the comparable read_annotate cazy DB) -- duplicating
+        # per assembly costs some redundant I/O, which is a fair trade for
+        # not racing on a shared, unlocked directory.
+        diamond_db_shm=lambda w: os.path.join(DIAMONDSHM, f"{w.diamond_db}.{w.assembly_id}"),
         diamond_path=lambda w: os.path.basename(features["databases"]["diamond_contig_protein"][w.diamond_db]),
-        diamond_db_nvme=lambda w: os.path.join(DIAMONDNVME, w.diamond_db),
+        diamond_db_nvme=lambda w: os.path.join(DIAMONDNVME, f"{w.diamond_db}.{w.assembly_id}"),
     container:
         docker["mag_annotate"],
     shell:

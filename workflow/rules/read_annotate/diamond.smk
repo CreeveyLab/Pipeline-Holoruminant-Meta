@@ -29,9 +29,15 @@ rule read_annotate__diamond__assign:
         copy_dbs=config["copy_dbs"],
         diamond_shm=DIAMONDSHM,
         diamond_nvme=DIAMONDNVME,
-        diamond_db_shm=lambda w: os.path.join(DIAMONDSHM, w.diamond_db),
+        # Real bug fixed 2026-09-22: same issue as contig_annotate/diamond.smk
+        # -- this rule runs once per (diamond_db, sample_id, library_id), so
+        # a staging path keyed only by diamond_db put every parallel sample's
+        # copy AND unconditional end-of-job cleanup (rm -rf) against the same
+        # shared, unlocked directory. Keyed per-sample-library too, so
+        # parallel jobs never contend for it.
+        diamond_db_shm=lambda w: os.path.join(DIAMONDSHM, f"{w.diamond_db}.{w.sample_id}.{w.library_id}"),
         diamond_path=lambda w: os.path.basename(features["databases"]["diamond"][w.diamond_db]),
-        diamond_db_nvme=lambda w: os.path.join(DIAMONDNVME, w.diamond_db),
+        diamond_db_nvme=lambda w: os.path.join(DIAMONDNVME, f"{w.diamond_db}.{w.sample_id}.{w.library_id}"),
     container:
         docker["mag_annotate"],
     shell:
