@@ -314,22 +314,35 @@ resource_sets:
     nvme: "nvme:0"  # no real nvme gres on Kelvin2, see kelvin_read_kraken2
 
   kelvin_read_humann:  # humann__run -- NOT a hipri candidate, real evidence
-    runtime: 900          # community-reported: 52.5+/-19.2 CPU-hours average
-                          # (HUMAnN3 paper); one real example: 9h wall-clock
-                          # w/ translated search on 40 cores. 900min=15h is
-                          # real margin under k2-medpri's 1440min cap, but
-                          # deliberately excludes k2-hipri -- would almost
-                          # certainly blow the 180min cap.
     # Real evidence correction (2026-09-20): job 9939585 hit a real, confirmed
     # OOM ("Detected 2 oom_kill events... Out Of Memory") after 3h31m, well
-    # within the 900min runtime budget. 32GB (chosen as "above typical peak,
-    # below worst case") wasn't enough -- this real sample falls into the
-    # documented "larger-DB" heavy category, not the 20-25GB typical case.
-    # Bumped toward the documented ~72GB worst case rather than a small
-    # increment.
+    # within the then-900min runtime budget. 32GB (chosen as "above typical
+    # peak, below worst case") wasn't enough -- this real sample falls into
+    # the documented "larger-DB" heavy category, not the 20-25GB typical
+    # case. Bumped toward the documented ~72GB worst case rather than a
+    # small increment.
+    #
+    # Second real evidence correction (2026-09-21): with the OOM fixed, job
+    # 9939973 ran the full 900min (15h) and hit TIMEOUT, not OOM. Its own
+    # log shows why: nucleotide alignment finished in ~52min (98.7% of reads
+    # unaligned, as expected), then the translated-search `diamond blastx`
+    # step against uniref90_201901b_full started and was STILL running when
+    # killed 13.5+ hours later. The 900min figure came from the HUMAnN3
+    # paper's community-reported average (52.5+/-19.2 CPU-hours / 10 cpus ~=
+    # 5.25h) -- wrong for this real sample; translated search alone already
+    # exceeded that by 2.5x before being cut off. Bumped hard to get a real
+    # completion time rather than guess again. k2-medpri (1440min/24h cap)
+    # dropped from the partition list -- this runtime now exceeds it, and
+    # listing it anyway would trigger the multi-partition --time rejection
+    # this whole fork exists to fix. Revisit both runtime and cpus (more
+    # threads may cut translated-search wall-clock more effectively than a
+    # bigger time budget) once this run actually completes.
+    runtime: 2880          # 48h -- real margin over the 13.5h+ unfinished
+                          # translated-search step alone, k2-lowpri/bioinf
+                          # are uncapped so this costs nothing if unneeded
     mem_mb: 80000
     cpus: 10
-    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    partition: "k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
 
   kelvin_read_metaphlan:  # metaphlan__run
