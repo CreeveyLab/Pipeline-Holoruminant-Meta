@@ -21,9 +21,66 @@
 # right value substituted automatically -- prefer that over editing by hand).
 projectFolder="/mnt/scratch2/users/<your-username>/<your-project-name>"
 configFile="${projectFolder}/config/config.yaml"
-# Pipeline folder is this fork's own location -- derived automatically, no
-# need to edit.
-pipelineFolder="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Helper: read YAML value (simple key: value, no nesting)
+################################################################################
+read_yaml() {
+    local key="$1"
+    local file="$2"
+    grep -E "^[[:space:]]*${key}:" "$file" \
+        | sed -E "s/^[^:]+:[[:space:]]*//" \
+        | tr -d '"'
+}
+
+# Pipeline folder: read from THIS PROJECT's config.yaml (pipeline_folder:,
+# already the single source of truth several rules read via
+# config["pipeline_folder"] -- see workflow/rules/folders.smk and others)
+# rather than derived from where this script file happens to live.
+#
+# Real bug fixed 2026-09-22: the old approach derived pipelineFolder from
+# `dirname "${BASH_SOURCE[0]}"`, which only works if this script stays
+# in the pipeline clone -- the header comment right above ("EDIT ME: point
+# this at your own project directory") invites copying/hand-editing this
+# file, and a colleague who copied it into their project directory (a
+# reasonable reading of that comment, without going through
+# bootstrap_project.sh) got a pipelineFolder pointing at their PROJECT
+# directory instead of the pipeline clone -- workflow/Snakefile and every
+# other $pipelineFolder/... path then didn't exist there. Reading it from
+# config.yaml instead means this script can live anywhere; the only
+# requirement is that projectFolder above points at a real, bootstrapped
+# project whose config.yaml has a correct pipeline_folder: (bootstrap_project.sh
+# already sets this correctly on every new project).
+pipelineFolder="$(read_yaml pipeline_folder "$configFile")"
+pipelineFolder="${pipelineFolder%/}"  # config.yaml's value has a trailing
+                                       # slash (required by rules that do
+                                       # config["pipeline_folder"] + "workflow/...")
+
+if [[ -z "$pipelineFolder" ]]; then
+    echo "ERROR: pipeline_folder not defined in $configFile" >&2
+    exit 1
+fi
+if [[ ! -f "$pipelineFolder/workflow/Snakefile" ]]; then
+    echo "ERROR: $pipelineFolder/workflow/Snakefile not found -- pipeline_folder in" >&2
+    echo "  $configFile" >&2
+    echo "  does not point at a real holor-pipeline-fork clone." >&2
+    exit 1
+fi
+
+# Real bug fixed 2026-09-22, same incident as above: nothing below used to
+# force the working directory to $projectFolder, so config.yaml's own
+# relative-path keys (sample-file: "config/samples.tsv", etc. -- resolved
+# by Snakemake against the CALLER's CWD, not against configFile's location)
+# and the bare `mkdir -p slurm_out` a few lines down silently used whatever
+# directory the *user* happened to be in when they ran this script. Ran
+# from the pipeline clone instead of the project directory (which the
+# pipelineFolder bug above made a plausible thing to end up doing), results
+# and slurm_out/ landed in the clone, and Snakemake picked up the clone's
+# own placeholder config/samples.tsv instead of the project's real one.
+# Making this script's own location and the caller's CWD irrelevant, by
+# always cd-ing into the real project directory first, removes this
+# failure mode structurally rather than relying on users invoking it from
+# the right place.
+cd "$projectFolder" || { echo "ERROR: cannot cd into $projectFolder" >&2; exit 1; }
 
 Profile=$projectFolder/config/profiles/Kelvin
 
@@ -49,18 +106,27 @@ mkdir -p "$SINGULARITY_TMPDIR"
 # seconds per invocation, real containers, real bind list). Apptainer's
 # setuid install refuses FUSE-mounting by default ("configuration disallows
 # users from mounting SIF squashFS partition in setuid mode") -- --userns
-# below is required alongside this, not optional.
-export PATH="/mnt/scratch2/igfs-anaconda/conda-envs/squashfuse-0.6.1-hc12fc2f_0/bin:$PATH"
-
-# Helper: read YAML value (simple key: value, no nesting)
-################################################################################
-read_yaml() {
-    local key="$1"
-    local file="$2"
-    grep -E "^[[:space:]]*${key}:" "$file" \
-        | sed -E "s/^[^:]+:[[:space:]]*//" \
-        | tr -d '"'
-}
+# is required alongside this, not optional (confirmed again 2026-09-22 on
+# a real compute node: squashfuse present + no --userns fails immediately
+# with exactly that message).
+#
+# Both squashfuse-on-PATH and --userns are only added below if a cheap,
+# side-effect-free check confirms squashfuse is actually usable here --
+# rather than assuming it always is. If it isn't (binary missing, /dev/fuse
+# not present/accessible), every container call falls back to the slower
+# but still-correct full-extraction path instead of a hard failure, and
+# this prints a visible warning so the slowdown is diagnosable rather than
+# silently costing minutes per rule.
+SQUASHFUSE_BIN="/mnt/scratch2/igfs-anaconda/conda-envs/squashfuse-0.6.1-hc12fc2f_0/bin"
+SINGULARITY_EXTRA_ARGS=""
+if [[ -x "$SQUASHFUSE_BIN/squashfuse" && -e /dev/fuse && -r /dev/fuse && -w /dev/fuse ]]; then
+    export PATH="$SQUASHFUSE_BIN:$PATH"
+    SINGULARITY_EXTRA_ARGS="--userns"
+else
+    echo "WARNING: squashfuse ($SQUASHFUSE_BIN) or /dev/fuse not usable on this node --" >&2
+    echo "  every container call will fall back to full sandbox extraction" >&2
+    echo "  (correct, but several minutes slower per invocation than a squashfuse mount)." >&2
+fi
 
 metaspades_slots="$(read_yaml metaspades_slots "$configFile")"
 
@@ -73,7 +139,7 @@ echo "config file      : ${configFile}"
 echo "Project folder   : ${projectFolder}"
 echo "Pipeline folder   : ${pipelineFolder}"
 
-mkdir -p slurm_out
+mkdir -p "$projectFolder/slurm_out"
 mkdir -p "$projectFolder/tmp"
 
 # Dry runs (-n / --dry-run) are fast, read-only, and safe to run even
@@ -111,7 +177,7 @@ fi
 # to paths this pipeline itself actually needs, not other unrelated
 # projects' directories.
 ################################################################################
-BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources/,${pipelineFolder}/workflow/scripts,/mnt/scratch2/igfs-anaconda/conda-dbs/kraken2/k2_pluspfp_20240904"
+BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources/,${pipelineFolder}/workflow/scripts,/mnt/scratch2/igfs-anaconda/conda-dbs/kraken2/k2_pluspfp_20240904,/mnt/scratch2/users/3053301/infinity-seq"
 
 # Shared, group-writable Apptainer/Singularity image cache (config/.docker.yml's
 # ~23 containers), not a per-project docker_images/ folder. Snakemake's own
@@ -136,7 +202,7 @@ SNAKEMAKE_INVOCATION() {
               --use-singularity \
               --configfile "$configFile" \
               --profile "$Profile" \
-              --singularity-args "--userns -B $BIND_PATHS" \
+              --singularity-args "$SINGULARITY_EXTRA_ARGS -B $BIND_PATHS" \
               --singularity-prefix "$SINGULARITY_PREFIX" \
               --latency-wait 60 \
               --scheduler greedy \

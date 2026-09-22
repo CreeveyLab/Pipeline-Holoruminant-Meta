@@ -127,10 +127,13 @@ fi
 ln -s "$RESOURCES_PATH" "$PROJECT_DIR/resources"
 
 # Run wrapper, generated from this fork's own validated run_Kelvin.sh
-# (same Apptainer bind-mount list, same Kelvin profile wiring).
+# (same Apptainer bind-mount list, same Kelvin profile wiring). Only
+# projectFolder needs patching -- run_Kelvin.sh reads pipelineFolder at
+# runtime from the project's own config.yaml (pipeline_folder:, patched
+# above), not from a static line in this script, so it stays correct even
+# if the generated run_Kelvin.sh is later copied or moved elsewhere.
 sed \
   -e "s|^projectFolder=.*|projectFolder=\"$PROJECT_DIR\"|" \
-  -e "s|^pipelineFolder=.*|pipelineFolder=\"$PIPELINE_FOLDER\"|" \
   "$PIPELINE_FOLDER/run_Kelvin.sh" > "$PROJECT_DIR/run_Kelvin.sh"
 chmod +x "$PROJECT_DIR/run_Kelvin.sh"
 
