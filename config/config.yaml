@@ -6,6 +6,15 @@
 # scaffolding a new project -- edit only if setting up a project by hand.
 pipeline_folder: "/users/<your-username>/holor-pipeline-fork/"
 
+# Real, on-disk location(s) of your raw sequencing reads (comma-separated if
+# more than one) -- also set automatically by bootstrap_project.sh. reads/
+# in this project only holds SYMLINKS to your real files; reads__link_run
+# runs inside a container and needs the real directory bind-mounted (see
+# run_Kelvin.sh's BIND_PATHS) to actually read them, or it fails. Leave
+# empty if you set up a project by hand and already added your reads
+# directory to BIND_PATHS yourself.
+raw_reads_dirs: ""
+
 features-file: "config/features.yaml"
 params-file: "config/params.yaml"
 docker-file: "config/.docker.yml"

@@ -177,7 +177,23 @@ fi
 # to paths this pipeline itself actually needs, not other unrelated
 # projects' directories.
 ################################################################################
-BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources/,${pipelineFolder}/workflow/scripts,/mnt/scratch2/igfs-anaconda/conda-dbs/kraken2/k2_pluspfp_20240904,/mnt/scratch2/users/3053301/infinity-seq"
+BIND_PATHS="/sys:/sys,/dev/shm:/dev/shm,/run,/tmp,${projectFolder}/tmp,/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources/,${pipelineFolder}/workflow/scripts,/mnt/scratch2/igfs-anaconda/conda-dbs/kraken2/k2_pluspfp_20240904"
+
+# Real bug fixed 2026-09-23: reads/ in the project only holds SYMLINKS to
+# your real raw reads -- reads__link_run runs inside a container and needs
+# the real directory bound to actually read through them, or it fails.
+# Every new user was hitting this on their very first run, since raw reads
+# essentially never live under a path already bound above. bootstrap_project.sh
+# now records the real directory/directories in config.yaml's
+# raw_reads_dirs: automatically; appended here so it doesn't need to be
+# added by hand. (A hardcoded personal path used to sit in this list as a
+# one-off workaround for exactly this -- removed in favor of this generic
+# mechanism, since it silently applied to every project, not just its
+# author's own.)
+RAW_READS_DIRS="$(read_yaml raw_reads_dirs "$configFile")"
+if [[ -n "$RAW_READS_DIRS" ]]; then
+    BIND_PATHS="$BIND_PATHS,$RAW_READS_DIRS"
+fi
 
 # Shared, group-writable Apptainer/Singularity image cache (config/.docker.yml's
 # ~23 containers), not a per-project docker_images/ folder. Snakemake's own

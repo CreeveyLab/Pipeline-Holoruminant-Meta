@@ -79,18 +79,33 @@ cp -r "$PIPELINE_FOLDER"/config/. "$PROJECT_DIR"/config/
 # upstream author's own path and doesn't exist on Kelvin).
 sed -i "s|^pipeline_folder:.*|pipeline_folder: \"$PIPELINE_FOLDER/\"|" "$PROJECT_DIR/config/config.yaml"
 
+# Real, on-disk directories the raw reads actually live in -- collected
+# below in both branches, then written into config.yaml's raw_reads_dirs:
+# so run_Kelvin.sh can bind-mount them automatically. Real bug found
+# 2026-09-22: reads/ in the project only holds symlinks; reads__link_run
+# runs inside a container and needs the REAL directory bound to actually
+# read through them, or it fails -- every new user was hitting this on
+# their very first run, since raw reads essentially never live under a
+# path this pipeline already binds by default.
+RAW_READS_DIRS=()
+
 if [[ -n "$SAMPLES_TSV" ]]; then
   cp "$SAMPLES_TSV" "$PROJECT_DIR/config/samples.tsv"
-  awk -F'\t' 'NR>1 && $1 !~ /^#/ {print $3; print $4}' "$SAMPLES_TSV" | sort -u | while read -r relpath; do
+  # Process substitution (not a pipe) so the loop runs in THIS shell, not a
+  # subshell -- a piped `... | while read` would silently lose RAW_READS_DIRS
+  # once the loop exits.
+  while read -r relpath; do
     [[ -z "$relpath" ]] && continue
     fname="$(basename "$relpath")"
     src="$(dirname "$SAMPLES_TSV")/$relpath"
     if [[ -f "$src" ]]; then
-      ln -sf "$(cd "$(dirname "$src")" && pwd)/$fname" "$PROJECT_DIR/reads/$fname"
+      src_dir_abs="$(cd "$(dirname "$src")" && pwd)"
+      ln -sf "$src_dir_abs/$fname" "$PROJECT_DIR/reads/$fname"
+      RAW_READS_DIRS+=("$src_dir_abs")
     else
       echo "WARNING: could not locate $relpath (referenced in $SAMPLES_TSV) to symlink" >&2
     fi
-  done
+  done < <(awk -F'\t' 'NR>1 && $1 !~ /^#/ {print $3; print $4}' "$SAMPLES_TSV" | sort -u)
 else
   echo "Detecting samples in $READS_DIR (sample_id = text before first '$SAMPLE_ID_DELIM')..."
   out="$PROJECT_DIR/config/samples.tsv"
@@ -99,6 +114,7 @@ else
   printf "sample_id\tlibrary_id\tforward_filename\treverse_filename\tforward_adapter\treverse_adapter\tassembly_ids\n" > "$out"
   found=0
   reads_dir_abs="$(cd "$READS_DIR" && pwd)"
+  RAW_READS_DIRS+=("$reads_dir_abs")
   for fwd in "$reads_dir_abs"/*_R1_*.fastq.gz; do
     [[ -f "$fwd" ]] || continue
     found=1
@@ -134,6 +150,14 @@ else
     echo "ERROR: no *_R1_*.fastq.gz files found in $READS_DIR" >&2
     exit 1
   fi
+fi
+
+# Record the real reads directory/directories in config.yaml so
+# run_Kelvin.sh can bind-mount them automatically (see raw_reads_dirs:'s
+# own comment in config/config.yaml for why this is needed at all).
+if [[ "${#RAW_READS_DIRS[@]}" -gt 0 ]]; then
+  raw_reads_dirs_joined="$(printf "%s\n" "${RAW_READS_DIRS[@]}" | sort -u | paste -sd, -)"
+  sed -i "s|^raw_reads_dirs:.*|raw_reads_dirs: \"$raw_reads_dirs_joined\"|" "$PROJECT_DIR/config/config.yaml"
 fi
 
 # Central resources store (read-only reference genomes + tool databases,
