@@ -70,7 +70,7 @@ rule preprocess__bowtie2__map:
 
         ( bowtie2 -x {input.mock} -1 {input.forward_} -2 {input.reverse_} \
             --threads {threads} --rg-id '{params.rg_id}' --rg '{params.rg_extra}' \
-        | samtools sort -l 9 -M -m {params.samtools_mem} -o {output.cram}.tmp \
+        | samtools sort -l 9 -M -m {params.samtools_mem} --output-fmt cram -o {output.cram}.tmp \
             --reference {input.reference} --threads {threads} ) \
         2>> {log}.{resources.attempt} 1>&2
 
