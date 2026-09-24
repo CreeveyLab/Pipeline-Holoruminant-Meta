@@ -55,7 +55,9 @@ bash run_Kelvin.sh
 ```
 
 `bootstrap_project.sh` wires your project to the shared reference-genome/database store and
-container cache automatically — no download or config needed.
+container cache automatically — no download or config needed. First time on this account?
+Add `--verify` to have it also submit one real test job and confirm everything actually
+works, not just that the config looks right (see the quickstart for why).
 
 # Installation, Setup and running the pipeline (upstream, generic)
 
