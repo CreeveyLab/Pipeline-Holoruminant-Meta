@@ -20,6 +20,18 @@ set -euo pipefail
 #                                  # defaults to -- override if your lab's real
 #                                  # naming convention differs.
 #     [--resources PATH]           # default: the central Holoruminant store
+#     [--verify]                   # after the dry-run self-check passes, also
+#                                  # submit one real, cheap SLURM job (the
+#                                  # first sample's reads__link_run) and wait
+#                                  # for it to finish. Opt-in, not the
+#                                  # default: it's the only way to actually
+#                                  # exercise the Apptainer container +
+#                                  # bind-mount path (a dry run never touches
+#                                  # either -- see docs/00-Kelvin2-Quickstart.md),
+#                                  # but costs a real queue-wait, which a user
+#                                  # bootstrapping their Nth project doesn't
+#                                  # need paying again. Worth it once, for a
+#                                  # brand new account/project, not routinely.
 #
 # Exactly one of --reads-dir / --samples-tsv is required.
 
@@ -29,9 +41,10 @@ SAMPLE_ID_DELIM="-"
 READS_DIR=""
 SAMPLES_TSV=""
 PROJECT_DIR=""
+VERIFY=0
 
 usage() {
-  echo "Usage: $0 <project_dir> [--reads-dir DIR | --samples-tsv FILE] [--sample-id-delimiter CHAR] [--resources PATH]" >&2
+  echo "Usage: $0 <project_dir> [--reads-dir DIR | --samples-tsv FILE] [--sample-id-delimiter CHAR] [--resources PATH] [--verify]" >&2
   exit 1
 }
 
@@ -44,6 +57,7 @@ while [[ $# -gt 0 ]]; do
     --samples-tsv) SAMPLES_TSV="$2"; shift 2 ;;
     --sample-id-delimiter) SAMPLE_ID_DELIM="$2"; shift 2 ;;
     --resources) RESOURCES_PATH="$2"; shift 2 ;;
+    --verify) VERIFY=1; shift ;;
     *) echo "Unknown argument: $1" >&2; usage ;;
   esac
 done
@@ -217,9 +231,43 @@ if "$SNAKEMAKE_BIN" -n \
     "$self_check_target" \
     > self_check.log 2>&1; then
   echo "Self-check passed: project DAG resolves cleanly."
-  echo "Ready. Submit with: cd $PROJECT_DIR && ./run_Kelvin.sh <target>"
 else
   echo "ERROR: dry-run self-check failed. See $PROJECT_DIR/self_check.log" >&2
   tail -30 self_check.log >&2
   exit 1
 fi
+
+# --verify: submit the same target for real (not a dry run) and wait for
+# it. A dry run only confirms the DAG resolves and referenced files are
+# stat-able -- it never invokes Apptainer, never checks a file's actual
+# read permission (stat-able and readable aren't the same thing), and
+# never calls sbatch. This is the only way to actually exercise the
+# container + bind-mount path and real filesystem write access, both real,
+# confirmed failure classes this fork has hit in practice. Opt-in because
+# it costs a real queue-wait -- fine once for a new project, an annoyance
+# on every bootstrap for someone doing this routinely.
+if [[ "$VERIFY" -eq 1 ]]; then
+  echo "Verifying with a real job (--verify): submitting $self_check_target..."
+  rm -f "$self_check_target"
+  ./run_Kelvin.sh "$self_check_target"
+
+  verify_timeout=300  # generous for a trivial rule tiered onto k2-sandbox
+                       # (see config/escalation.yaml) -- real queue-wait
+                       # there is normally seconds, not minutes
+  waited=0
+  while [[ ! -f "$self_check_target" && "$waited" -lt "$verify_timeout" ]]; do
+    sleep 5
+    waited=$((waited + 5))
+  done
+
+  if [[ -f "$self_check_target" ]]; then
+    echo "Verify passed: $self_check_target created for real."
+  else
+    echo "ERROR: verify failed -- $self_check_target was not created within ${verify_timeout}s." >&2
+    echo "Check what happened with:" >&2
+    echo "  cd $PROJECT_DIR && bash check_progress_kelvin.sh" >&2
+    exit 1
+  fi
+fi
+
+echo "Ready. Submit with: cd $PROJECT_DIR && ./run_Kelvin.sh <target>"

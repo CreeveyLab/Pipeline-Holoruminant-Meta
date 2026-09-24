@@ -56,6 +56,15 @@ If your lab's sample-naming convention splits the sample ID on something
 other than a hyphen, pass `--sample-id-delimiter <char>`. Run the script
 with no arguments for the full option list.
 
+**First time on this account, or a new shared store?** Add `--verify` to
+also submit one real, cheap job and wait for it, on top of the dry-run
+self-check. A dry run only confirms the pipeline's dependency graph
+resolves — it never invokes Apptainer and never checks a file's actual
+read permission, so it can't catch a broken container bind-mount or a
+permissions problem on the shared stores. `--verify` catches both, at the
+cost of one real (short) queue-wait — worth it once, not on every project
+you set up routinely.
+
 ## 4. Launch
 
 From inside your project directory:
