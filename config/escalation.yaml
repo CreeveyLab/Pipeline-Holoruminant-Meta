@@ -30,7 +30,7 @@ assemble__magscot__rename: kelvin_magscot_small
 assemble__maxbin2__run: large
 assemble__metabat2__run: large
 assemble__megahit__run: large
-assemble__metaspades__run: large
+assemble__metaspades__run: kelvin_metaspades_himem
 
 contig_annotate__camper__annotate: medium_nvme
 contig_annotate__diamond__assign: medium_nvme

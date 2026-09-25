@@ -87,6 +87,28 @@ resource_sets:
     partition: "k2-himem,k2-lowpri,k2-bioinf"
     nvme: "nvme:250"
 
+  # Real evidence (2026-09-25), gathered via the k2-bioinf partition-wide
+  # sacct collector (~/bin/collect_k2bioinf.sh), not this pipeline's own
+  # benchmark: data -- no metaspades run has ever completed successfully
+  # inside this pipeline yet. Real recent attempts at 280G (32 cpus)
+  # FAILED, peak RSS landing right up against the 280G ceiling on several
+  # samples (up to 262.8GB) -- looks like OOM, not an unrelated crash.
+  # Meanwhile a different user's real metaspades runs (20 cpus, requesting
+  # 300G) completed successfully, peak RSS 205-220GB, real wall-clock
+  # 12-20h. Different dataset, so not a guarantee, but real evidence 300G
+  # has headroom where 280G didn't, and this fork's own samples aren't
+  # bigger than what typically failed at 280G either. Routes through
+  # k2-himem (with k2-lowpri/k2-bioinf fallback, matching highmem's own
+  # partition list) since that's the only Kelvin partition intended for
+  # requests this size -- not because 4000min is expected to be needed:
+  # real completions elsewhere took well under a day.
+  kelvin_metaspades_himem:
+    runtime: 4000
+    mem_mb: 300000
+    cpus: 20
+    partition: "k2-himem,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
   longrun:
     runtime: 20000
     mem_mb: 320000
