@@ -53,8 +53,16 @@ This:
 - Runs a scoped dry run as a self-check before declaring success.
 
 If your lab's sample-naming convention splits the sample ID on something
-other than a hyphen, pass `--sample-id-delimiter <char>`. Run the script
-with no arguments for the full option list.
+other than a hyphen, pass `--sample-id-delimiter <char>`. If the sample ID
+isn't the first delimiter-separated chunk (e.g. a shared project number
+comes first), add `--sample-id-field N` to pick which field is — the
+default (field 1) will otherwise silently give every sample the same ID.
+Two more optional flags: `--assembly-strip-regex <RE>` co-assembles
+replicates that reduce to the same ID once a trailing pattern is stripped
+(e.g. `'R[0-9]+$'` so `D10T1R1`/`D10T1R2` share one assembly), and
+`--exclude-regex <RE>` skips samples matching a pattern (e.g. `'^NTC$'`
+for no-template controls). Run the script with no arguments for the full
+option list.
 
 **First time on this account, or a new shared store?** Add `--verify` to
 also submit one real, cheap job and wait for it, on top of the dry-run
