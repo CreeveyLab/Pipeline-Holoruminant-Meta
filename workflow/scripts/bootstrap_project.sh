@@ -19,6 +19,28 @@ set -euo pipefail
 #                                  # NOT '_' like workflow/scripts/createSampleSheet.sh
 #                                  # defaults to -- override if your lab's real
 #                                  # naming convention differs.
+#     [--sample-id-field N]        # default 1 (1-indexed). Real bug found by
+#                                  # Lucy 2026-09-28: field 1 is only correct
+#                                  # if the FIRST delimiter-separated chunk is
+#                                  # what varies per sample. Her real filenames
+#                                  # (12223_D10T1R1_S53_R1_001.fastq.gz, '_'
+#                                  # delimiter) share "12223" as a project
+#                                  # number in field 1 -- every sample -- and
+#                                  # need field 2 (D10T1R1) instead. Using
+#                                  # field 1 there silently collapsed every
+#                                  # sample into one (same sample_id for all).
+#     [--assembly-strip-regex RE] # optional. Strips RE (sed -E, applied to
+#                                  # the derived sample_id) to get assembly_id
+#                                  # -- lets replicates of the same biological
+#                                  # sample share one assembly while keeping
+#                                  # distinct sample_id rows. Lucy's example:
+#                                  # 'R[0-9]+$' strips a trailing replicate
+#                                  # marker (R1/R2/...) so D10T1R1/D10T1R2
+#                                  # co-assemble as D10T1.
+#     [--exclude-regex RE]         # optional. Skip any sample whose derived
+#                                  # sample_id matches RE (bash [[ =~ ]]) --
+#                                  # e.g. '^NTC$' to drop no-template-control
+#                                  # samples that shouldn't be assembled.
 #     [--resources PATH]           # default: the central Holoruminant store
 #     [--verify]                   # after the dry-run self-check passes, also
 #                                  # submit one real, cheap SLURM job (the
@@ -38,13 +60,16 @@ set -euo pipefail
 PIPELINE_FOLDER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RESOURCES_PATH="/mnt/scratch2/igfs-databases/HoloR-MetaG-pipeline-resources"
 SAMPLE_ID_DELIM="-"
+SAMPLE_ID_FIELD=1
+ASSEMBLY_STRIP_REGEX=""
+EXCLUDE_REGEX=""
 READS_DIR=""
 SAMPLES_TSV=""
 PROJECT_DIR=""
 VERIFY=0
 
 usage() {
-  echo "Usage: $0 <project_dir> [--reads-dir DIR | --samples-tsv FILE] [--sample-id-delimiter CHAR] [--resources PATH] [--verify]" >&2
+  echo "Usage: $0 <project_dir> [--reads-dir DIR | --samples-tsv FILE] [--sample-id-delimiter CHAR] [--sample-id-field N] [--assembly-strip-regex RE] [--exclude-regex RE] [--resources PATH] [--verify]" >&2
   exit 1
 }
 
@@ -56,6 +81,9 @@ while [[ $# -gt 0 ]]; do
     --reads-dir) READS_DIR="$2"; shift 2 ;;
     --samples-tsv) SAMPLES_TSV="$2"; shift 2 ;;
     --sample-id-delimiter) SAMPLE_ID_DELIM="$2"; shift 2 ;;
+    --sample-id-field) SAMPLE_ID_FIELD="$2"; shift 2 ;;
+    --assembly-strip-regex) ASSEMBLY_STRIP_REGEX="$2"; shift 2 ;;
+    --exclude-regex) EXCLUDE_REGEX="$2"; shift 2 ;;
     --resources) RESOURCES_PATH="$2"; shift 2 ;;
     --verify) VERIFY=1; shift ;;
     *) echo "Unknown argument: $1" >&2; usage ;;
@@ -69,6 +97,10 @@ fi
 if [[ -n "$READS_DIR" && -n "$SAMPLES_TSV" ]]; then
   echo "ERROR: supply only one of --reads-dir or --samples-tsv, not both" >&2
   usage
+fi
+if ! [[ "$SAMPLE_ID_FIELD" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: --sample-id-field must be a positive integer (got '$SAMPLE_ID_FIELD')" >&2
+  exit 1
 fi
 
 # Refuse to clobber an existing, non-empty project directory -- don't
@@ -113,22 +145,36 @@ if [[ -n "$SAMPLES_TSV" ]]; then
     fname="$(basename "$relpath")"
     src="$(dirname "$SAMPLES_TSV")/$relpath"
     if [[ -f "$src" ]]; then
+      # Both forms: cd+pwd (logical) keeps any symlink shortcut component
+      # (e.g. ~/sharedscratch) as typed; pwd -P (canonical) fully resolves
+      # it. reads__link_run's `readlink --canonicalize` ends up accessing
+      # the file via the CANONICAL path regardless of which form --reads-dir
+      # was given as, so both need to be in BIND_PATHS -- confirmed directly
+      # (2026-09-28) that `cd $symlink && pwd` and `pwd -P` are genuinely
+      # different strings for a real symlink on this filesystem, and a bind
+      # covering only one form doesn't cover the other.
       src_dir_abs="$(cd "$(dirname "$src")" && pwd)"
+      src_dir_real="$(cd "$(dirname "$src")" && pwd -P)"
       ln -sf "$src_dir_abs/$fname" "$PROJECT_DIR/reads/$fname"
-      RAW_READS_DIRS+=("$src_dir_abs")
+      RAW_READS_DIRS+=("$src_dir_abs" "$src_dir_real")
     else
       echo "WARNING: could not locate $relpath (referenced in $SAMPLES_TSV) to symlink" >&2
     fi
   done < <(awk -F'\t' 'NR>1 && $1 !~ /^#/ {print $3; print $4}' "$SAMPLES_TSV" | sort -u)
 else
-  echo "Detecting samples in $READS_DIR (sample_id = text before first '$SAMPLE_ID_DELIM')..."
+  echo "Detecting samples in $READS_DIR (sample_id = field $SAMPLE_ID_FIELD when split on '$SAMPLE_ID_DELIM')..."
   out="$PROJECT_DIR/config/samples.tsv"
   fwd_adapter="AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"
   rev_adapter="AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
   printf "sample_id\tlibrary_id\tforward_filename\treverse_filename\tforward_adapter\treverse_adapter\tassembly_ids\n" > "$out"
   found=0
+  # Both forms recorded for the same reason as the --samples-tsv branch
+  # above (see its comment): a symlink shortcut and its canonical target
+  # are genuinely different strings, and reads__link_run needs the
+  # canonical one bound.
   reads_dir_abs="$(cd "$READS_DIR" && pwd)"
-  RAW_READS_DIRS+=("$reads_dir_abs")
+  reads_dir_real="$(cd "$READS_DIR" && pwd -P)"
+  RAW_READS_DIRS+=("$reads_dir_abs" "$reads_dir_real")
   for fwd in "$reads_dir_abs"/*_R1_*.fastq.gz; do
     [[ -f "$fwd" ]] || continue
     found=1
@@ -139,29 +185,76 @@ else
       echo "WARNING: no reverse mate for $fname (expected $rev_name) -- skipping" >&2
       continue
     fi
-    sample_id="${fname%%"${SAMPLE_ID_DELIM}"*}"
-    # Real bug found 2026-09-22: bash's ${var%%pattern} returns the whole
-    # string UNCHANGED when the pattern (here, the delimiter) never
-    # matches -- so a filename that doesn't contain SAMPLE_ID_DELIM at all
-    # silently becomes its own sample_id, dot-extensions and all (e.g.
-    # "12223_D5T3R3_S19_R1_001.fastq.gz" if the delimiter is '-' but the
-    # filename only uses '_'). That garbage sample_id then flows straight
-    # into every downstream output path. Refuse instead of guessing.
-    if [[ "$sample_id" == "$fname" ]]; then
+
+    # Split the filename into fields on the delimiter and pick one (fix
+    # by Lucy, 2026-09-28). The old approach, ${fname%%"$DELIM"*}, always
+    # took field 1, which for names like 12223_D10T1R1_S53_R1_001.fastq.gz
+    # with delimiter '_' gave the same sample_id (the shared project
+    # number) for every sample. It also returned the whole filename
+    # unchanged if the delimiter never matched at all.
+    IFS="$SAMPLE_ID_DELIM" read -ra name_parts <<< "$fname"
+    if (( ${#name_parts[@]} < 2 )); then
       echo "ERROR: delimiter '$SAMPLE_ID_DELIM' not found in filename '$fname' --" >&2
       echo "  sample_id would become the entire filename. Pass the correct" >&2
-      echo "  --sample-id-delimiter for your lab's naming convention (e.g. '_' for" >&2
-      echo "  ${fname%%_*}_...)." >&2
+      echo "  --sample-id-delimiter for your lab's naming convention." >&2
       exit 1
     fi
+    if (( ${#name_parts[@]} < SAMPLE_ID_FIELD )); then
+      echo "ERROR: filename '$fname' has only ${#name_parts[@]} '$SAMPLE_ID_DELIM'-separated fields," >&2
+      echo "  but --sample-id-field is $SAMPLE_ID_FIELD." >&2
+      exit 1
+    fi
+    sample_id="${name_parts[$((SAMPLE_ID_FIELD - 1))]}"
+    if [[ -z "$sample_id" ]]; then
+      echo "ERROR: empty sample_id from '$fname' (field $SAMPLE_ID_FIELD)." >&2
+      exit 1
+    fi
+    if [[ -n "$EXCLUDE_REGEX" && "$sample_id" =~ $EXCLUDE_REGEX ]]; then
+      echo "  skipping (matches --exclude-regex): $sample_id ($fname)"
+      continue
+    fi
+    if [[ "$sample_id" == *[._]* ]]; then
+      echo "WARNING: sample_id '$sample_id' contains '.' or '_', which can make {sample}.{library} wildcards ambiguous." >&2
+    fi
+
+    # assembly_id: same as sample_id unless --assembly-strip-regex is
+    # given, in which case samples that reduce to the same string are
+    # co-assembled (e.g. stripping a trailing replicate marker so
+    # D10T1R1/D10T1R2 share assembly D10T1 while keeping separate
+    # sample_id rows).
+    assembly_id="$sample_id"
+    if [[ -n "$ASSEMBLY_STRIP_REGEX" ]]; then
+      assembly_id="$(sed -E "s#${ASSEMBLY_STRIP_REGEX}##" <<< "$sample_id")"
+      if [[ -z "$assembly_id" ]]; then
+        echo "ERROR: --assembly-strip-regex reduced '$sample_id' to an empty assembly id." >&2
+        exit 1
+      fi
+    fi
+
     ln -sf "$reads_dir_abs/$fname" "$PROJECT_DIR/reads/$fname"
     ln -sf "$reads_dir_abs/$rev_name" "$PROJECT_DIR/reads/$rev_name"
     printf "%s\tlib1\treads/%s\treads/%s\t%s\t%s\t%s\n" \
-      "$sample_id" "$fname" "$rev_name" "$fwd_adapter" "$rev_adapter" "$sample_id" >> "$out"
-    echo "  found sample: $sample_id ($fname)"
+      "$sample_id" "$fname" "$rev_name" "$fwd_adapter" "$rev_adapter" "$assembly_id" >> "$out"
+    echo "  found sample: $sample_id -> assembly $assembly_id ($fname)"
   done
   if [[ "$found" -eq 0 ]]; then
     echo "ERROR: no *_R1_*.fastq.gz files found in $READS_DIR" >&2
+    exit 1
+  fi
+
+  # Every row uses library lib1, so sample_id must be unique. Duplicates
+  # mean the delimiter/field choice is wrong -- this is exactly the
+  # failure mode that motivated --sample-id-field: every sample silently
+  # collapsing into one shared sample_id.
+  dups="$(tail -n +2 "$out" | cut -f1 | sort | uniq -d)"
+  if [[ -n "$dups" ]]; then
+    echo "ERROR: duplicate sample_id values in $out:" >&2
+    echo "$dups" | head >&2
+    echo "  Check --sample-id-delimiter / --sample-id-field." >&2
+    exit 1
+  fi
+  if [[ $(tail -n +2 "$out" | wc -l) -eq 0 ]]; then
+    echo "ERROR: all samples were excluded -- $out has no rows." >&2
     exit 1
   fi
 fi
