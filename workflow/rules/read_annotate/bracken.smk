@@ -59,34 +59,46 @@ rule read_annotate__bracken__assign:
         gres=lambda wc, attempt: f"{get_resources(wc, attempt, 'read_annotate__bracken__assign')['nvme']}",
         attempt=get_attempt,
     retries: len(get_escalation_order("read_annotate__bracken__assign"))
+    container:
+        # Reuses the same image kraken2__assign already runs in (no new
+        # container pull) -- Bracken itself isn't installed in it (checked
+        # directly, 2026-10-06: `which bracken bracken-build
+        # est_abundance.py` inside docker://fischuu/hrp_preprocess:0.8
+        # returns nothing), but this rule doesn't call Bracken's own
+        # binaries -- see workflow/scripts/bracken_est_abundance.py's own
+        # header for why, and params.script below.
+        docker["preprocess"],
     params:
         read_length=params["read_annotate"]["bracken"]["read_length"],
-        # No container: directive on purpose. Confirmed directly (2026-10-06)
-        # Bracken isn't in any existing hrp_* image (checked inside
-        # docker://fischuu/hrp_preprocess:0.8, where kraken2__assign runs --
-        # `which bracken bracken-build est_abundance.py` returns nothing).
-        # Doesn't warrant a new dedicated image either: Bracken is a tiny,
-        # single-threaded Python+C tool (no -t/--threads option at all,
-        # confirmed via its own usage text) with no heavy runtime
-        # dependencies, and it's already installed centrally as a conda env
-        # -- bracken-2.6.1-py39hc16433a_3, confirmed real and working.
-        # Called directly via that env's own est_abundance.py rather than the
-        # top-level `bracken` wrapper script: the wrapper demands its -d
-        # argument be a directory containing a file literally named
-        # database<READ_LEN>mers.kmer_distrib, which would mean reproducing
-        # that naming convention (via a symlink or copy) for every database
-        # this rule might ever point at; est_abundance.py itself (which the
-        # wrapper just shells out to) takes the kmer_distrib file directly as
-        # -k, matching config/features.yaml's per-database-per-length path
+        folder=config["pipeline_folder"],
+        # Self-contained on purpose (changed 2026-10-06, was: call the
+        # already-installed-but-externally-owned conda env
+        # bracken-2.6.1-py39hc16433a_3 directly by absolute path). That env
+        # is real and works, but it's a shared resource this fork has no
+        # control over and no guarantee survives being updated or deleted
+        # out from under it. est_abundance.py -- the actual estimation
+        # script Bracken's own `bracken` wrapper just shells out to -- is
+        # pure Python stdlib (confirmed by reading its imports: os, sys,
+        # argparse, operator, time) with no compiled/C dependency, so it's
+        # vendored verbatim into this repo instead (GPLv3, redistribution
+        # permitted -- see the vendored file's own provenance note) and run
+        # with this container's own python3, matching the existing
+        # pipeline_folder/workflow/scripts convention used elsewhere in this
+        # fork (e.g. read_annotate__ncyc__run, assemble__drep__separate_bins).
+        # Verified directly: the vendored copy, run with a plain system
+        # python3 (not the conda env), produces byte-identical output to the
+        # original. Calls est_abundance.py directly rather than through
+        # Bracken's own `bracken` wrapper script for an unrelated reason:
+        # that wrapper demands its -d argument be a directory containing a
+        # file literally named database<READ_LEN>mers.kmer_distrib, which
+        # would mean reproducing that naming convention per database;
+        # est_abundance.py takes the kmer_distrib file directly as -k,
+        # matching config/features.yaml's per-database-per-length path
         # layout exactly, with nothing to rename.
-        # --use-singularity only containerizes rules that declare a
-        # container: -- real, existing precedent for a containerless rule
-        # already in this fork (see contig_annotate__eggnog_merge_annotations),
-        # so mixing this in is safe.
-        est_abundance_bin="/mnt/scratch2/igfs-anaconda/conda-envs/bracken-2.6.1-py39hc16433a_3/bin/est_abundance.py",
+        script="workflow/scripts/bracken_est_abundance.py",
     shell:
         """
-        {params.est_abundance_bin} \
+        python3 {params.folder}/{params.script} \
             --input {input.report} \
             --kmer_distr {input.kmer_distrib} \
             --output {output.abundance} \
