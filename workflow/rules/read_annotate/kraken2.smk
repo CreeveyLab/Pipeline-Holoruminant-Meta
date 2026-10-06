@@ -115,7 +115,33 @@ rule read_annotate__kraken2__assign:
             DB_DST="$DB_SRC"
         fi
         
-        echo "Running Kraken2 using DB_DST=$DB_ST" 2>> {log}.{resources.attempt} 1>&2
+        echo "Running Kraken2 using DB_DST=$DB_DST" 2>> {log}.{resources.attempt} 1>&2
+
+        # --memory-mapping (-M) is only fast when DB_DST is actually sitting
+        # on something RAM-backed (a successful /dev/shm or NVMe copy above).
+        # When no copy happened -- DB_DST fell back to DB_SRC, the database's
+        # original location on shared/networked storage -- mmap turns every
+        # hash-table lookup during classification into a random-access page
+        # fault out to that shared disk. Real, confirmed symptom (2026-10-05,
+        # against a ~1.2TB database too big for this node's /dev/shm, itself
+        # capped at ~50% of physical RAM by Linux, not 100%): the classify
+        # process sat at ~11GB RSS, ~2% CPU, with its output not growing
+        # across repeated checks minutes apart -- alive, but making no real
+        # progress, for 19.5+ hours. Without -M, kraken2 instead does one
+        # real bulk sequential read of the database into the job's own
+        # process heap (sized by this rule's mem_mb, not /dev/shm's ceiling)
+        # as a one-time cost, which is also far cheaper than mmap's scattered
+        # access pattern when reading from Lustre/shared disk. Note this
+        # means the no-copy fallback path needs mem_mb to cover the FULL
+        # database as real process RSS, not just the smaller "+10% over
+        # documented DB size" margin above that assumed mmap/shm access --
+        # already correctly sized for the database configured here, but
+        # worth re-checking before pointing this rule at a much larger one.
+        MMAP_FLAG="--memory-mapping"
+        if [ "$DB_DST" = "$DB_SRC" ]; then
+            echo "DB not copied to fast storage -- dropping --memory-mapping, will bulk-load into process memory instead" 2>> {log}.{resources.attempt} 1>&2
+            MMAP_FLAG=""
+        fi
 
         for file in {input.forwards}; do
             sample_id=$(basename "$file" _1.fq.gz)
@@ -134,7 +160,7 @@ rule read_annotate__kraken2__assign:
                 --paired \
                 --output >(pigz --processes {threads} > "$output.tmp") \
                 --report "$report.tmp" \
-                --memory-mapping \
+                $MMAP_FLAG \
                 "$forward" "$reverse" \
             2> "$log_file" 1>&2
 
