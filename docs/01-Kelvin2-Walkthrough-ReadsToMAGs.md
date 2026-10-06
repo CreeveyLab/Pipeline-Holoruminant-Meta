@@ -286,7 +286,10 @@ Read-level profiling (`kraken2`, `diamond`, `humann`, `metaphlan`,
 above — it only needs Step 1's decontaminated reads, not anything from
 assembly onward. Left out here while its resource tiers are still being
 tuned; see `config/escalation.yaml`'s `read_annotate__*` entries and their
-comments for the current state.
+comments for the current state. `bracken` is a new addition (2026-10-06)
+alongside these — it isn't independent in the same way, since it runs on
+`kraken2`'s own report rather than directly on reads, but it's part of the
+same not-covered-here group.
 
 `quantify` (relative abundance of each MAG across samples) consumes Step
 6's output but isn't covered here either; check `workflow/rules/quantify/`

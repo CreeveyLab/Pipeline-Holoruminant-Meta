@@ -72,6 +72,7 @@ would touch.
 | Tool | Rule name | What it does |
 |---|---|---|
 | Kraken2 | `read_annotate__kraken2` | Taxonomic classification, every sample, every configured database |
+| Bracken **(new, 2026-10-06)** | `read_annotate__bracken` | Bayesian abundance correction on the Kraken2 report, every sample, every configured database |
 | Krona | `read_annotate__krona` | Krona plots from the Kraken2 output |
 | Diamond | `read_annotate__diamond` | Protein-level homology search, every sample |
 | HumanN3 | `read_annotate__humann` | Functional profiling, every sample |

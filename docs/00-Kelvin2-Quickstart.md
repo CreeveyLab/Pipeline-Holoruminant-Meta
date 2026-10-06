@@ -178,6 +178,12 @@ behave differently for these —
   Every other `read_annotate` tool (`kraken2`, `diamond`, `humann`,
   `metaphlan`, `phyloflash`, `singlem`, `nonpareil`) has been validated
   against real data.
+- **Bracken is a new addition (2026-10-06)**, not yet run as a real
+  submitted job through the full pipeline. Its underlying script has been
+  verified directly (byte-identical output against a real Kraken2 report)
+  and the rule resolves correctly in a real dry run, but that's a lighter
+  bar than the "validated against real data" tools above — treat its first
+  real run as the actual validation.
 
 ## 8. Worked example: raw reads to MAGs
 

@@ -97,6 +97,7 @@ Instead of the entire module, individual tools can also be called by running
 bash run_Snakebite-Holoruminant-MetaG.sh read_annotate__diamond
 bash run_Snakebite-Holoruminant-MetaG.sh read_annotate__humann
 bash run_Snakebite-Holoruminant-MetaG.sh read_annotate__kraken2
+bash run_Snakebite-Holoruminant-MetaG.sh read_annotate__bracken
 bash run_Snakebite-Holoruminant-MetaG.sh read_annotate__krona
 bash run_Snakebite-Holoruminant-MetaG.sh read_annotate__metaphlan
 bash run_Snakebite-Holoruminant-MetaG.sh read_annotate__nonpareil
