@@ -70,6 +70,7 @@ quantify__coverm__genome_aggregate: small
 quantify__coverm__genome_run: small
 quantify__samtools__stats_cram: small
 
+read_annotate__bracken__assign: kelvin_bracken_small
 read_annotate__diamond__assign: kelvin_read_diamond
 read_annotate__diamond__summarise: small
 read_annotate__humann__run: kelvin_read_humann

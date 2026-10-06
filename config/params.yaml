@@ -16,6 +16,18 @@ read_annotate:
     max-target-seqs: 1    # Max. number of hits per query
   kraken2:
     memory_gb: 32
+  bracken:
+    # Real, confirmed sequencing read length for this lab's data (matches
+    # the kmer_distrib file already present for the large RefSeq database --
+    # only a 150mers.kmer_distrib exists there, no bracken-build rerun
+    # needed). Bracken's correction is per-sample at one fixed read length,
+    # not detected dynamically from each FASTQ -- change this if the lab's
+    # actual sequencing length changes, and make sure a matching
+    # database<N>mers.kmer_distrib exists for every configured kraken2
+    # database (config/features.yaml: databases: bracken_kmer_distrib:) --
+    # read_annotate__bracken__assign fails loudly, not silently, if one is
+    # missing for this value.
+    read_length: 150
   nonpareil:
     X: 100    #Default: 1000, smaller for testing!!!
   humann:

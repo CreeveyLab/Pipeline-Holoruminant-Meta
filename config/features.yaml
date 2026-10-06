@@ -41,6 +41,25 @@ databases:
   kraken2:  # add entries as necessary, intended by two spaces
     # refseq500: resources/databases/kraken2/kraken2_RefSeqV205_Complete_500GB # This db requires about 1.4TB of RAM
     standard: resources/databases/kraken2/kraken2_Standard_20240112  # This db requires about 140GB of RAM
+  # Per kraken2 database above, per read length (bp), the matching
+  # bracken-build kmer distribution file -- read_annotate__bracken__assign
+  # looks this up by [db name][params.yaml: read_annotate: bracken:
+  # read_length] and fails loudly (not silently) if either key is missing,
+  # rather than guessing a file exists. Confirmed directly (2026-10-06)
+  # which lengths each real database on disk actually has -- don't assume
+  # more exist than listed here; run bracken-build for any missing length
+  # before adding its entry.
+  bracken_kmer_distrib:
+    # refseq500: # matches the commented-out kraken2: refseq500 entry above -- uncomment both together
+    #   150: resources/databases/kraken2/kraken2_RefSeqV205_Complete_500GB/database150mers.kmer_distrib
+    standard:
+      50: resources/databases/kraken2/kraken2_Standard_20240112/database50mers.kmer_distrib
+      75: resources/databases/kraken2/kraken2_Standard_20240112/database75mers.kmer_distrib
+      100: resources/databases/kraken2/kraken2_Standard_20240112/database100mers.kmer_distrib
+      150: resources/databases/kraken2/kraken2_Standard_20240112/database150mers.kmer_distrib
+      200: resources/databases/kraken2/kraken2_Standard_20240112/database200mers.kmer_distrib
+      250: resources/databases/kraken2/kraken2_Standard_20240112/database250mers.kmer_distrib
+      300: resources/databases/kraken2/kraken2_Standard_20240112/database300mers.kmer_distrib
   krona: resources/databases/krona
   metaphlan4: resources/databases/metaphlan4/
   phyloflash: resources/databases/phyloflash/138.2
