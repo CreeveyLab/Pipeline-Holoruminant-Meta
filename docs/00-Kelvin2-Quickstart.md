@@ -176,14 +176,19 @@ behave differently for these —
 - **`sylph`, `ncyc`, and Krona's taxonomy database** aren't yet in the
   central resource store — rules depending on them will fail until sourced.
   Every other `read_annotate` tool (`kraken2`, `diamond`, `humann`,
-  `metaphlan`, `phyloflash`, `singlem`, `nonpareil`) has been validated
-  against real data.
-- **Bracken is a new addition (2026-10-06)**, not yet run as a real
-  submitted job through the full pipeline. Its underlying script has been
-  verified directly (byte-identical output against a real Kraken2 report)
-  and the rule resolves correctly in a real dry run, but that's a lighter
-  bar than the "validated against real data" tools above — treat its first
-  real run as the actual validation.
+  `metaphlan`, `phyloflash`, `singlem`, `nonpareil`, `bracken`) has been
+  validated against real data — `bracken` most recently (2026-10-10): a
+  real submitted job (not just a dry run) completed successfully, real
+  peak RSS ~98MB (well inside its 4GB tier), with real, sensible output
+  (correctly structured abundance table and corrected Kraken-format
+  report, sane taxa for this lab's rumen samples).
+- **Targeting one rule can trigger an unexpectedly large re-run cascade**
+  if a raw input file's modification time is newer than an already-good
+  downstream output — Snakemake's dependency tracking is mtime-based by
+  default. See
+  [10-Troubleshooting.md](10-Troubleshooting.md#targeting-one-rule-re-runs-way-more-than-expected)
+  for the real fix (`--touch`) rather than waiting out a needless
+  re-derivation.
 
 ## 8. Worked example: raw reads to MAGs
 
