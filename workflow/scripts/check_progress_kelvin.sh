@@ -42,10 +42,31 @@ echo "=== Kelvin progress: $PROJECT_DIR ==="
 # name) ---
 ORCH_HITS="$(pgrep -af "snakemake -s" 2>/dev/null | grep -F "$PROJECT_DIR" || true)"
 
+# pgrep above only sees THIS node. Kelvin2 has several login nodes behind
+# round-robin DNS -- land on a different one than the orchestrator is
+# actually running on, and pgrep sees nothing even though it's genuinely
+# alive. The heartbeat file (see run_Kelvin.sh / kelvin_launch_guard.sh for
+# the full reasoning) closes that gap: it's on shared /mnt/scratch2, so it
+# reads identically from any login node.
+HEARTBEAT_FILE="$PROJECT_DIR/.snakemake/orchestrator_heartbeat"
+HEARTBEAT_STALE_AFTER=180
+HEARTBEAT_STATUS=""
+if [[ -f "$HEARTBEAT_FILE" ]]; then
+    heartbeat_age=$(( $(date +%s) - $(stat -c %Y "$HEARTBEAT_FILE") ))
+    if [[ "$heartbeat_age" -lt "$HEARTBEAT_STALE_AFTER" ]]; then
+        HEARTBEAT_STATUS="$(cat "$HEARTBEAT_FILE") (${heartbeat_age}s old)"
+    fi
+fi
+
 if [[ -n "$ORCH_HITS" ]]; then
     echo ""
-    echo "Orchestrator is running:"
+    echo "Orchestrator is running (on this node):"
     echo "$ORCH_HITS" | sed 's/^/  /'
+elif [[ -n "$HEARTBEAT_STATUS" ]]; then
+    echo ""
+    echo "Orchestrator appears to be running, but on a DIFFERENT login node than"
+    echo "this one (not visible to this node's own process list) -- recent heartbeat:"
+    echo "  $HEARTBEAT_STATUS"
 else
     echo ""
     echo "No orchestrator currently running for this project."

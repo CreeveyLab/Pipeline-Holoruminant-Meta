@@ -267,6 +267,44 @@ ORCH_LOG="$projectFolder/slurm_out/kelvin_orchestrator.log"
 disown
 ORCH_PID=$!
 
+# Heartbeat file: Kelvin2 has multiple login nodes behind round-robin DNS
+# (confirmed directly, 2026-10-13: kelvin2.qub.ac.uk resolves to 4 different
+# IPs), and this orchestrator is a plain background process on whichever one
+# you happen to be on right now -- not a SLURM job itself, so it has no
+# cluster-wide tracking of its own. kelvin_launch_guard.sh's own `pgrep` check
+# only sees processes on the node IT runs from; log back in later and land on
+# a different node, and that check sees nothing even though this orchestrator
+# is genuinely still alive. squeue (also used by the guard) only closes part
+# of that gap -- it's blind during the real, if usually brief, pause between
+# one job finishing and the next being submitted. Confirmed no cross-node fix
+# is available either (passwordless SSH between login nodes is not permitted
+# for this account) -- so instead, write a heartbeat to the project directory
+# itself, which is on shared /mnt/scratch2 and looks identical from every
+# login node. The guard then checks *this file's* freshness, which closes
+# the gap without needing to reach any specific node at all.
+#
+# 30s interval, no real cost either way (one tiny write to an uncontended
+# file) -- chosen for responsiveness to a genuine crash, not to limit write
+# volume. The loop's own natural exit (once kill -0 on $ORCH_PID fails) means
+# the file simply goes stale after the real orchestrator is gone -- nothing
+# else needs to clean it up.
+mkdir -p "$projectFolder/.snakemake"
+HEARTBEAT_FILE="$projectFolder/.snakemake/orchestrator_heartbeat"
+(
+    trap '' HUP
+    while kill -0 "$ORCH_PID" 2>/dev/null; do
+        # Content is for a human's own diagnosis if they go looking (which
+        # node, which PID) -- kelvin_launch_guard.sh itself checks this
+        # file's mtime, not these fields, specifically to avoid any
+        # cross-node clock-skew question: both sides of that comparison
+        # (the file's mtime, and "now") are read from whichever single node
+        # happens to be running the guard at the time.
+        echo "$(date -Iseconds) $(hostname) $ORCH_PID" > "$HEARTBEAT_FILE"
+        sleep 30
+    done
+) &
+disown
+
 echo ""
 echo "Orchestrator running as PID $ORCH_PID on $(hostname)."
 echo "Log: $ORCH_LOG"
