@@ -73,6 +73,51 @@ permissions problem on the shared stores. `--verify` catches both, at the
 cost of one real (short) queue-wait — worth it once, not on every project
 you set up routinely.
 
+### Starting from data you already have
+
+You don't have to start from raw reads. Three flags let you drop in data
+already processed elsewhere — they're composable, so use any subset
+together:
+
+- **Already-cleaned reads** (quality-trimmed, or fully host-decontaminated)
+  — `--cleaned-reads-dir <dir> --cleaned-reads-stage {fastp,decontaminated}`
+  instead of `--reads-dir`. Same sample detection as `--reads-dir`
+  (`--sample-id-delimiter`/`--sample-id-field`/etc. all apply), but it
+  drops the files straight into the pipeline's own intermediate path
+  instead of `reads/`, so the read-cleaning steps never run. The stage
+  matters and isn't defaulted: pass `fastp` if you want Kraken2/Bracken
+  specifically (Kraken2 deliberately reads pre-decontamination reads —
+  see its rule's own docstring); pass `decontaminated` for every other
+  `read_annotate` tool, or if you want the pipeline to assemble from your
+  cleaned reads.
+- **An assembly you already have** — `--provided-assembly <dir>`, one
+  `<assembly_id>.fa.gz` per assembly ID in your `samples.tsv`. Sets
+  `assembler: "provided"` in the generated config — every assembly-
+  consuming rule already supports this, so it's not a new mechanism.
+- **Alignments you already have too** — `--provided-alignments <dir>`
+  (requires `--provided-assembly`), one
+  `<assembly_id>.<sample_id>.<library_id>.<bam|cram>` per sample mapped to
+  that assembly. Missing `.bai`/`.crai` indexes are built automatically if
+  `samtools` is on your `PATH` when you run the script.
+
+Example — already-decontaminated reads plus a provided assembly and
+alignments, straight to binning:
+
+```bash
+<your-clone>/workflow/scripts/bootstrap_project.sh <project_dir> \
+  --cleaned-reads-dir <dir> --cleaned-reads-stage decontaminated \
+  --provided-assembly <dir> \
+  --provided-alignments <dir>
+```
+
+Every file is validated before it's wired in — a missing assembly or
+alignment for any sample/assembly your `samples.tsv` expects is a loud,
+specific error, not a silent gap discovered deep in a SLURM job later. The
+dry-run self-check also adapts: it targets whatever's actually the
+furthest-along real next step (Kraken2, Nonpareil, CONCOCT, or
+bowtie2-build's index) instead of always assuming raw reads are where you
+started.
+
 ## 4. Launch
 
 From inside your project directory:
