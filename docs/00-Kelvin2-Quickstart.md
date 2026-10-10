@@ -146,10 +146,17 @@ you'll want to see the output immediately.)
 
 Before a real launch, `run_Kelvin.sh` runs a safety check
 (`kelvin_launch_guard.sh`) that refuses to start a second orchestrator if a
-previous run for this project is still active — either SLURM jobs still
-queued/running, or an orchestrator process that didn't fully exit. If it
-finds one, it runs `check_progress_kelvin.sh` for you instead of launching a
-duplicate.
+previous run for this project is still active — SLURM jobs still
+queued/running, an orchestrator process that didn't fully exit, **or** a
+recent heartbeat file saying it's still alive even if the first two came
+back clear. That third check matters specifically because Kelvin2 has
+several login nodes behind round-robin DNS: if you log back in later and
+land on a different one than the orchestrator is actually running on, a
+local process check alone can't see it. The orchestrator writes that
+heartbeat into the project directory itself (shared storage, so it reads
+the same from any login node) every 30 seconds while it's alive. If the
+guard finds any of the three, it runs `check_progress_kelvin.sh` for you
+instead of launching a duplicate.
 
 ## 5. Finding the right target to run
 
