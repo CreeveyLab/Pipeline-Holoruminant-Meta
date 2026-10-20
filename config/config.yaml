@@ -93,6 +93,15 @@ resource_sets:
   # inside this pipeline yet. Real recent attempts at 280G (32 cpus)
   # FAILED, peak RSS landing right up against the 280G ceiling on several
   # samples (up to 262.8GB) -- looks like OOM, not an unrelated crash.
+  # (2026-10-20: this failure shape -- OOM-looking crashes in exactly this
+  # 250-320G range regardless of the real memory granted -- matches a
+  # known SPAdes/mimalloc-vs-transparent-hugepages interaction elsewhere.
+  # assemble__metaspades__run now unconditionally sets
+  # MIMALLOC_ALLOW_THP=0, logging the node's real THP setting alongside it
+  # -- see that rule's shell command. Raising this tier to 300G may have
+  # been masking the real cause rather than fixing it; worth watching
+  # whether failures recur at 300G now that the THP fix is in, and
+  # revisiting whether 300G is still needed once that's known.)
   # Meanwhile a different user's real metaspades runs (20 cpus, requesting
   # 300G) completed successfully, peak RSS 205-220GB, real wall-clock
   # 12-20h. Different dataset, so not a guarantee, but real evidence 300G

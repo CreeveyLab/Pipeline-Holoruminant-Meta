@@ -37,10 +37,21 @@ rule assemble__metaspades__run:
         """
         # Concatenate forward reads into a single file
         cat {params.forwards} > {output.concatenated_forwards}
-        
+
         # Concatenate reverse reads into a single file
         cat {params.reverses} > {output.concatenated_reverses}
-        
+
+        # SPAdes' bundled allocator (mimalloc) interacting with the node's
+        # transparent huge pages has caused repeated OOM-looking crashes in
+        # the 250-320GB range in real use here, independent of how much
+        # memory was actually granted -- see the kelvin_metaspades_himem
+        # comment in config/config.yaml for the real incident this traces
+        # to. Disabling THP for mimalloc is free (no rebuild, no measured
+        # downside), so it's unconditional rather than gated on first
+        # checking /sys -- the check below is logged for diagnosis only.
+        echo "transparent_hugepage/enabled on $(hostname): $(cat /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || echo 'unavailable')" > {log}.{resources.attempt}
+        export MIMALLOC_ALLOW_THP=0
+
         metaspades.py \
             -t {threads} \
             --memory {params.mem_gb} \
@@ -49,7 +60,7 @@ rule assemble__metaspades__run:
             -1 {output.concatenated_forwards} \
             -2 {output.concatenated_reverses} \
             -o {params.out_dir} \
-        2> {log}.{resources.attempt} 1>&2
+        2>> {log}.{resources.attempt} 1>&2
 
         ( seqtk seq \
             {params.out_dir}/contigs.fasta \

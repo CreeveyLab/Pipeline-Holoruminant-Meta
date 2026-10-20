@@ -66,3 +66,41 @@ Real caveats, both confirmed directly:
   to a real target, same as above) before `--touch` or anything else will
   run — a hard kill leaves `.snakemake/locks/` populated, and Snakemake
   refuses to touch a locked directory.
+
+## metaSPAdes fails with an OOM-looking crash even though it had memory to spare
+
+*`assemble__metaspades__run` dies partway through, SLURM/`sacct` shows
+`OUT_OF_MEMORY` or the peak RSS landing suspiciously close to the request,
+but the real memory granted should have been plenty.*
+
+Two separate, real issues here, both already handled by this fork's own
+`workflow/rules/assemble/metaspades.smk` — but worth understanding if
+you're tuning `kelvin_metaspades_himem` in `config/config.yaml` yourself:
+
+1. **SPAdes' `-m`/`--memory` flag is its own internal ceiling, separate
+   from whatever SLURM actually grants the job.** It doesn't infer this
+   from `--mem`/cgroups on its own — pass the wrong value (or rely on its
+   default, 250GB) and SPAdes can self-terminate well under a genuinely
+   larger SLURM allocation, or try to use more than SLURM actually gave
+   it. This rule already sets `--memory` from `resources.mem_mb` every
+   attempt (converted once, in `params.mem_gb`), so it always matches
+   whatever tier/attempt is actually running — nothing to change here, but
+   if you ever add a `--continue` retry path, re-derive this value fresh
+   rather than trusting whatever SPAdes cached from the failed attempt.
+2. **SPAdes' bundled allocator (mimalloc) can interact badly with
+   transparent huge pages (THP) on the node it lands on**, producing
+   exactly this failure shape — an OOM-looking crash in a consistent
+   memory range regardless of how much was actually granted. Check with
+   `cat /sys/kernel/mm/transparent_hugepage/enabled` on a node you suspect
+   — `[always]` means THP is active cluster/node-wide. The fix
+   (`export MIMALLOC_ALLOW_THP=0` before invoking `metaspades.py`) is free
+   — no rebuild, no measured downside — so this rule sets it
+   unconditionally rather than gating on the check; the check is still run
+   and logged (to the rule's own `.log` file) purely for diagnosis.
+   `config/config.yaml`'s `kelvin_metaspades_himem` comment documents a
+   real, unexplained OOM-shaped failure series at 280GB that this fix was
+   added in response to (2026-10-20) — the 300GB bump that followed may
+   have been masking this rather than fixing it. If failures recur at
+   300GB with the THP fix in place, that's real evidence it wasn't THP
+   after all; if they don't, the tier may have more headroom than the
+   280GB-failure evidence alone suggested.
