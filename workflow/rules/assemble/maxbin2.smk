@@ -25,26 +25,36 @@ rule assemble__maxbin2__run:
     params:
         seed=1,
         workdir=lambda w: Path(str(MAXBIN2 / w.assembly_id) + "_tmp"),
-        coverage=lambda w: Path(str(MAXBIN2 / w.assembly_id) + "_tmp") / "maxbin2.coverage",
+        abund_list=lambda w: Path(str(MAXBIN2 / w.assembly_id) + "_tmp") / "maxbin2.abund_list.txt",
+        align_ext=ALIGN_EXT,
         minLen=params["assemble"]["maxbin"]["min_contig_len"],
     shell:
         """
         rm --recursive --force {params.workdir}
         mkdir --parents {params.workdir}
 
-        ( samtools coverage {input.alignments} \
-          | awk '{{print $1"\t"$5}}' \
-          | grep -v '^#' \
-          ) > {params.coverage} \
-          2> {log}
+        # One abundance file per sample (contig, meandepth = column 7), fed to
+        # MaxBin2 via -abund_list. A single `samtools coverage` over all
+        # alignments pools them into one row per contig, losing the
+        # between-sample differential coverage MaxBin2 bins on.
+        : > {params.abund_list}
+        for aln in {input.alignments}; do
+            cov={params.workdir}/$(basename "$aln" .{params.align_ext}).coverage
+            ( samtools coverage "$aln" \
+              | awk '{{print $1"\t"$7}}' \
+              | grep -v '^#' \
+              ) > "$cov" \
+              2>> {log}
+            echo "$cov" >> {params.abund_list}
+        done
 
         run_MaxBin.pl \
             -thread {threads} \
             -contig {input.assembly} \
             -out {params.workdir}/maxbin2 \
-            -abund {params.coverage} \
+            -abund_list {params.abund_list} \
             -min_contig_length {params.minLen} \
-        2> {log} 1>&2
+        2>> {log} 1>&2
 
         rename \
             's/\\.fasta$/.fa/' \
@@ -63,6 +73,8 @@ rule assemble__maxbin2__run:
             --force \
             {params.workdir}/maxbin.{{coverage,log,marker,noclass,summary,tooshort}} \
             {params.workdir}/maxbin2.marker_of_each_bin.tar.gz \
+            {params.workdir}/*.coverage \
+            {params.abund_list} \
         2>> {log} 1>&2
 
         mv {params.workdir} {output.workdir}
