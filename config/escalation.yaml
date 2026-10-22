@@ -15,7 +15,7 @@ mag_annotate__quast: medium
 
 assemble__bowtie2__build: medium
 assemble__bowtie2__map: medium
-assemble__concoct_run: large
+assemble__concoct_run: kelvin_binning,large
 assemble__drep__join_genomes: medium_nvme
 assemble__drep__run: medium_nvme
 assemble__drep__separate_bins: small
@@ -27,8 +27,8 @@ assemble__magscot__merge_contig_to_bin: kelvin_magscot_small
 assemble__magscot__run: kelvin_magscot_small
 assemble__magscot__reformat: kelvin_magscot_small
 assemble__magscot__rename: kelvin_magscot_small
-assemble__maxbin2__run: large
-assemble__metabat2__run: large
+assemble__maxbin2__run: kelvin_binning,large
+assemble__metabat2__run: kelvin_binning,large
 assemble__megahit__run: large
 assemble__metaspades__run: kelvin_metaspades_himem
 

@@ -118,6 +118,24 @@ resource_sets:
     partition: "k2-himem,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
 
+  # Binners (assemble__concoct_run, __maxbin2__run, __metabat2__run), off the
+  # generic `large` tier (320GB). Real data, one completed run each on the
+  # LoughNeagh2026 4-sample co-assembly (~506Mbp at >=1500bp), peak RSS of
+  # sacct step .0: CONCOCT 10.3GB / 3h30m (job 10315992), MaxBin2 4.3GB /
+  # 4h10m (10315990), MetaBAT2 5.5GB / 26m (10315994), all at 20 cpus.
+  # Thin evidence (one dataset), so memory is a flat 60GB -- ~6x the worst
+  # observed peak and still <10% of a 773GB node -- rather than a tight 2x,
+  # leaving room for larger co-assemblies before escalating to `large`.
+  # 720min (~3x the longest run) keeps k2-medpri's 24h cap in reach instead
+  # of the contended uncapped queues. cpus=8 is NOT data-driven: sacct's
+  # TotalCPU reads ~0 for containerised steps, so it can't measure CPU use.
+  kelvin_binning:
+    runtime: 720
+    mem_mb: 60000
+    cpus: 8
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
   longrun:
     runtime: 20000
     mem_mb: 320000
