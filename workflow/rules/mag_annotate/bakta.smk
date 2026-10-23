@@ -1,19 +1,19 @@
 rule mag_annotate__bakta:
-    """Run Bakta over the dereplicated mags"""
+    """Run Bakta once per dereplicated MAG, all genomes bundled into one job"""
     input:
-        contigs=DREP / "dereplicated_genomes.fa.gz",
+        genomes=DREP / "dereplicated_genomes",
     output:
-        tsv=BAKTA / "bakta.tsv",
-        faa=BAKTA / "bakta.faa",
+        out_dir=directory(BAKTA / "genomes"),
     log:
         BAKTA / "bakta.log",
     container:
         docker["mag_annotate"]
     params:
-        out_dir=BAKTA,
+        folder=config["pipeline_folder"],
+        work_dir=lambda w: Path(str(BAKTA / "genomes") + "_tmp"),
         db=features["databases"]["bakta"],
         options=params["mag_annotate"]["bakta"]["additional_options"],
-        tmpdir=config["tmp_storage"]
+        threads_per_genome=params["mag_annotate"]["bakta"]["threads_per_genome"],
     threads: esc("cpus", "mag_annotate__bakta")
     resources:
         runtime=esc("runtime", "mag_annotate__bakta"),
@@ -25,57 +25,16 @@ rule mag_annotate__bakta:
     retries: len(get_escalation_order("mag_annotate__bakta"))
     shell:
         """
-        bakta --db {params.db} \
-              --force \
-              --verbose \
-              --output {params.out_dir} \
-              --prefix bakta \
-              --threads {threads} \
-              {params.options} \
-              {input.contigs} \
-              > {log} 2>&1
-        """
+        # work_dir is deliberately not wiped first: bakta_per_genome.sh skips
+        # genomes a previous (timed-out) attempt already finished.
+        {params.folder}/workflow/scripts/bakta_per_genome.sh \
+            {params.db} \
+            {input.genomes} \
+            {params.work_dir} \
+            {threads} \
+            {params.threads_per_genome} \
+            {params.options} \
+        > {log} 2>&1
 
-rule mag_annotate__bakta_mags_run:
-    """Run Bakta over the dereplicated mags"""
-    input:
-        contigs=MAGSCOT / "{assembly_id}.fa.gz",
-    output:
-        tsv=BAKTAMAG / "bakta_{assembly_id}.tsv",
-        faa=BAKTAMAG / "bakta_{assembly_id}.faa",
-    log:
-        BAKTAMAG / "bakta_{assembly_id}.log",
-    container:
-        docker["mag_annotate"]
-    params:
-        out_dir=BAKTAMAG,
-        db=features["databases"]["bakta"],
-        options=params["mag_annotate"]["bakta"]["additional_options"],
-        tmpdir=config["tmp_storage"]
-    threads: esc("cpus", "mag_annotate__bakta_mags_run")
-    resources:
-        runtime=esc("runtime", "mag_annotate__bakta_mags_run"),
-        mem_mb=esc("mem_mb", "mag_annotate__bakta_mags_run"),
-        cpus_per_task=esc("cpus", "mag_annotate__bakta_mags_run"),
-        slurm_partition=esc("partition", "mag_annotate__bakta_mags_run"),
-        gres=lambda wc, attempt: f"{get_resources(wc, attempt, 'mag_annotate__bakta_mags_run')['nvme']}",
-        attempt=get_attempt,
-    retries: len(get_escalation_order("mag_annotate__bakta_mags_run"))
-    shell:
+        mv {params.work_dir} {output.out_dir}
         """
-        bakta --db {params.db} \
-              --force \
-              --verbose \
-              --output {params.out_dir} \
-              --prefix bakta_{wildcards.assembly_id} \
-              --threads {threads} \
-              {params.options} \
-              {input.contigs} \
-              > {log} 2>&1
-        """
-
-rule mag_annotate__bakta_mags:
-    """Run Bakta over the dereplicated mags"""
-     input:
-        expand(BAKTAMAG / "bakta_{assembly_id}.faa", assembly_id=ASSEMBLIES),
-

@@ -1,5 +1,4 @@
-mag_annotate__bakta: medium_nvme
-mag_annotate__bakta_mags_run: medium_nvme
+mag_annotate__bakta: kelvin_bakta,kelvin_bakta_long
 mag_annotate__camper__annotate: medium_nvme
 mag_annotate__checkm2__predict: medium_nvme
 mag_annotate__dram__annotate: large_nvme

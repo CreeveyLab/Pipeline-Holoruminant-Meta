@@ -197,12 +197,10 @@ job across Steps 2-5 at once, not just dRep's.
 
 Everything from here on consumes the dereplicated MAG set from Step 5. Like
 Step 5, most of this module operates on the **whole MAG set at once** —
-GTDB-Tk, CheckM2, QUAST, eggNOG, PhyloPhlAn, and the non-per-assembly
-`Bakta` rule all take the entire dereplicated set as input, with no
-per-sample wildcard, so there's no "just `sample1`" version of these either.
-`DRAM` (the per-assembly variant), the per-assembly `Bakta` rule, and
-`ProteinOrtho` (built from the per-assembly Bakta outputs) are the
-exception — those run per-assembly, so an aside is shown for them.
+GTDB-Tk, CheckM2, QUAST, eggNOG, PhyloPhlAn, Bakta and ProteinOrtho all
+take the entire dereplicated set as input, with no per-sample wildcard, so
+there's no "just `sample1`" version of these either. `DRAM`'s per-assembly
+variant is the exception, so an aside is shown for it.
 
 **Taxonomy** — `GTDB-Tk` classifies the whole MAG set (no per-sample variant):
 
@@ -230,21 +228,22 @@ depends on that same whole-set `DRAM` output.
 bash run_Kelvin.sh mag_annotate__dram_mags     # per-assembly DRAM run, every assembly
 bash run_Kelvin.sh mag_annotate__eggnog        # whole MAG set, no per-sample variant
 bash run_Kelvin.sh mag_annotate__camper        # whole MAG set, no per-sample variant
-bash run_Kelvin.sh mag_annotate__bakta_mags    # per-assembly Bakta run, every assembly
-bash run_Kelvin.sh mag_annotate__proteinortho  # built from every assembly's Bakta output
+bash run_Kelvin.sh mag_annotate__bakta         # one Bakta run per MAG, bundled into one job
+bash run_Kelvin.sh mag_annotate__proteinortho  # orthologs across the per-MAG Bakta proteomes
 bash run_Kelvin.sh mag_annotate__phylophlan    # whole MAG set, no per-sample variant
 ```
 
-*Aside — just `sample1`, for the per-assembly ones:*
+*Aside — just `sample1`, for per-assembly DRAM:*
 
 ```bash
 bash run_Kelvin.sh results/mag_annotate/dram_mags/sample1/genome_stats.tsv
-bash run_Kelvin.sh results/mag_annotate/bakta_mags/bakta_sample1.faa
 ```
 
-(`proteinortho` compares Bakta output *across* assemblies, so like Step 5's
-dRep, it has no single-sample form — running it for `sample1` alone would
-need every other assembly's Bakta output to compare against.)
+Bakta writes one folder per MAG, `results/mag_annotate/bakta/genomes/<MAG>/`,
+holding that genome's `<MAG>.tsv`, `.faa`, `.gff3`, `.gbff` and summary
+`.txt`. The MAGs are annotated a few at a time inside one SLURM job, not one
+job per MAG. If that job times out on a very large MAG set, the retry
+carries on from the MAGs already finished.
 
 Or, all of the above at once — every tool in this module, for every MAG:
 
@@ -258,7 +257,7 @@ shows everything together rather than checking each one.
 
 **Output**: `results/mag_annotate/`, one subfolder per tool (`gtdbtk/`,
 `checkm2/`, `quast/`, `dram/`, `dram_mags/`, `eggnog/`, `camper/`, `bakta/`,
-`bakta_mags/`, `proteinortho/`, `phylophlan/`).
+`proteinortho/`, `phylophlan/`).
 
 ## Run everything in one command
 

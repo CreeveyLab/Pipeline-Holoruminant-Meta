@@ -1,7 +1,7 @@
 rule mag_annotate__proteinortho:
-    """Run Proteinortho over all bakta output FAA files together"""
+    """Run Proteinortho across the per-MAG Bakta proteomes"""
     input:
-        faa=expand(BAKTAMAG / "bakta_{assembly_id}.faa", assembly_id=ASSEMBLIES),
+        genomes=BAKTA / "genomes",
     output:
         tsv=PROTEINORTHO / "proteinortho.proteinortho.tsv",
     log:
@@ -24,7 +24,11 @@ rule mag_annotate__proteinortho:
         
         mkdir -p {params.outdir}
         
-        proteinortho {input.faa} \
+        # One proteome per dereplicated MAG (<genome>/<genome>.faa; the
+        # .hypotheticals.faa alongside it is a subset, so not passed)
+        faa=$(for dir in {input.genomes}/*/; do echo "$dir$(basename "$dir").faa"; done)
+
+        proteinortho $faa \
             -cpus={threads} \
             -project=proteinortho \
             2>> {log} 1>&2

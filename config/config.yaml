@@ -136,6 +136,28 @@ resource_sets:
     partition: "k2-medpri,k2-lowpri,k2-bioinf"
     nvme: "nvme:0"
 
+  # mag_annotate__bakta: one job annotating every dereplicated MAG, 4 genomes
+  # at a time x 8 threads (params.yaml: threads_per_genome). Real per-genome
+  # data, 78 LoughNeagh2026 MAGs run singly at 8 cpus (array job 10375873):
+  # peak RSS median 7.4GB / max 12.7GB, wall-clock median 13.8min / max
+  # 27.5min. 4 x 16GB covers the worst genome running alongside three more;
+  # 78 genomes is ~4.5h, so 1440min (k2-medpri's cap) fits ~400 MAGs.
+  # Larger sets time out and retry on kelvin_bakta_long, which resumes from
+  # the genomes already finished rather than starting over.
+  kelvin_bakta:
+    runtime: 1440
+    mem_mb: 64000
+    cpus: 32
+    partition: "k2-medpri,k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
+  kelvin_bakta_long:
+    runtime: 4320
+    mem_mb: 64000
+    cpus: 32
+    partition: "k2-lowpri,k2-bioinf"
+    nvme: "nvme:0"
+
   longrun:
     runtime: 20000
     mem_mb: 320000

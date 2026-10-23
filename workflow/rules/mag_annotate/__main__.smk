@@ -14,7 +14,6 @@ rule mag_annotate:
     """Evaluate the dereplication steps"""
     input:
         rules.mag_annotate__bakta.output,
-        rules.mag_annotate__bakta_mags.input,
         rules.mag_annotate__camper.input,
         rules.mag_annotate__eggnog.output,
         rules.mag_annotate__quast.output,

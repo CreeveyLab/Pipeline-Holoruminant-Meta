@@ -85,6 +85,7 @@ quantify:
 mag_annotate:
   bakta:
     additional_options: " --skip-crispr --skip-plot "
+    threads_per_genome: 8  # mag_annotate__bakta runs (threads / this) genomes at once
   phylophlan:
     diversity: "high"
     

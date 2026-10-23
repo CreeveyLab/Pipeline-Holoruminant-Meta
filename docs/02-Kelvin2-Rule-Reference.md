@@ -126,12 +126,11 @@ would touch.
 | DRAM (per-MAG) | `mag_annotate__dram_mags` | Same, but run per sample-wise MAG |
 | CheckM2 | `mag_annotate__checkm2` | Genome completeness/contamination |
 | QUAST | `mag_annotate__quast` | Assembly quality stats, per dereplicated MAG |
-| Bakta (dereplicated set) | `mag_annotate__bakta` | Genome annotation, whole dereplicated set |
-| Bakta (per-MAG) | `mag_annotate__bakta_mags` | Same, per sample-wise MAG |
+| Bakta | `mag_annotate__bakta` | Genome annotation, one run per dereplicated MAG (all bundled into one job) |
 | eggNOG | `mag_annotate__eggnog` | Functional annotation, dereplicated genomes |
 | CAMPER | `mag_annotate__camper` | Carbohydrate/pathway annotation, dereplicated genomes |
 | PhyloPhlAn | `mag_annotate__phylophlan` | Phylogenetic placement |
-| Proteinortho | `mag_annotate__proteinortho` | Ortholog clustering across Bakta outputs |
+| Proteinortho | `mag_annotate__proteinortho` | Ortholog clustering across the per-MAG Bakta proteomes |
 | Everything above | `mag_annotate` | The whole module |
 
 ## Quantify
